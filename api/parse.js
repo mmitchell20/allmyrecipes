@@ -1,5 +1,14 @@
 const cheerio = require('cheerio');
 
+// --- config via env ---
+const ALLOWED = (process.env.ALLOWED_DOMAINS || "simplyrecipes.com,cookieandkate.com")
+  .split(',')
+  .map(s => s.trim().toLowerCase())
+  .filter(Boolean);
+const USE_PROXY = process.env.USE_PROXY === 'true';
+const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY || '';
+
+// ---------- helpers ----------
 function getTypes(obj) {
   const t = obj && obj['@type'];
   if (!t) return [];
@@ -13,13 +22,11 @@ function flattenInstructions(instr) {
   if (typeof instr === 'string') {
     return instr.split(/\s*(?<=\.|\?|!)\s+/).map(s => s.trim()).filter(Boolean);
   }
-
   if (Array.isArray(instr)) {
     for (const item of instr) {
       if (!item) continue;
-      if (typeof item === 'string') {
-        out.push(item.trim());
-      } else if (typeof item === 'object') {
+      if (typeof item === 'string') out.push(item.trim());
+      else if (typeof item === 'object') {
         const t = item['@type'];
         if (t === 'HowToSection' && Array.isArray(item.itemListElement)) {
           out.push(...flattenInstructions(item.itemListElement));
@@ -32,10 +39,7 @@ function flattenInstructions(instr) {
     }
     return out;
   }
-
-  if (typeof instr === 'object' && instr.text) {
-    out.push(String(instr.text).trim());
-  }
+  if (typeof instr === 'object' && instr.text) out.push(String(instr.text).trim());
   return out;
 }
 
@@ -57,11 +61,16 @@ function pickInstructionCandidates($) {
 }
 
 async function fetchHTML(url) {
-  const resp = await fetch(url, {
+  const target = (USE_PROXY && SCRAPER_API_KEY)
+    ? `https://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&keep_headers=true&url=${encodeURIComponent(url)}`
+    : url;
+
+  const resp = await fetch(target, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9'
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Referer': 'https://www.google.com/'
     },
   });
   if (!resp.ok) throw new Error(`Upstream fetch failed: ${resp.status}`);
@@ -71,7 +80,6 @@ async function fetchHTML(url) {
 function parseLDJSON($) {
   const scripts = $('script[type="application/ld+json"]');
   let recipe = null;
-
   scripts.each((_, el) => {
     let jsonText = cheerio(el).contents().text();
     if (!jsonText) return;
@@ -88,13 +96,10 @@ function parseLDJSON($) {
       }
     } catch (_) {}
   });
-
   if (!recipe) return null;
-
   const title = recipe.name || '';
   const ingredients = recipe.recipeIngredient || recipe.ingredients || [];
   const steps = flattenInstructions(recipe.recipeInstructions);
-
   return { title, ingredients, steps };
 }
 
@@ -115,33 +120,43 @@ function parseFallback($) {
   }
 
   let steps = pickInstructionCandidates($);
-  if (steps.length < 2) {
-    steps = textList($('ol li')).slice(0, 50);
-  }
+  if (steps.length < 2) steps = textList($('ol li')).slice(0, 50);
 
   return { title, ingredients, steps };
 }
 
+// ---------- handler ----------
 module.exports = async (req, res) => {
+  // Basic CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const url = (req.query && req.query.url) || new URL(req.url, 'http://localhost').searchParams.get('url');
-    if (!url || !/^https?:\/\//i.test(url)) {
+    // Read ?url=... robustly (encoded or plain)
+    let raw = (req.query && req.query.url) || (req.url ? new URL(req.url, 'http://localhost').searchParams.get('url') : '');
+    let targetUrl = '';
+    try { targetUrl = raw ? decodeURIComponent(raw) : ''; } catch { targetUrl = raw || ''; }
+
+    if (!targetUrl || !/^https?:\/\//i.test(targetUrl)) {
       return res.status(400).json({ error: 'Missing or invalid ?url' });
     }
 
-    const html = await fetchHTML(url);
+    // Allow-list check
+    const host = new URL(targetUrl).hostname.replace(/^www\./, '').toLowerCase();
+    if (!ALLOWED.includes(host)) {
+      return res.status(403).json({ error: `Domain not allowed. Allowed: ${ALLOWED.join(', ')}` });
+    }
+
+    const html = await fetchHTML(targetUrl);
     const $ = cheerio.load(html, { decodeEntities: true });
 
     const fromLD = parseLDJSON($);
     const { title, ingredients, steps } = fromLD || parseFallback($);
 
     return res.status(200).json({
-      sourceUrl: url,
+      sourceUrl: targetUrl,
       title: (title || '').trim(),
       ingredients: (ingredients || []).map(s => s.trim()).filter(Boolean).slice(0, 200),
       steps: (steps || []).map(s => s.trim()).filter(Boolean).slice(0, 200),
