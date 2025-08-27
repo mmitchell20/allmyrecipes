@@ -21,6 +21,10 @@
 </head>
 <body>
   <h1>allmyrecipes</h1>
+  <div class="note">
+  <strong>Heads up:</strong> Use this only for <em>personal</em> use. Don’t republish extracted content and please respect each site’s Terms of Service.
+</div>
+
   <p class="muted">Paste a recipe link and get the title, ingredients, and steps as plain text.</p>
 
   <form id="recipeForm">
@@ -45,6 +49,9 @@
       <textarea id="stepsBox" readonly></textarea>
     </div>
   </div>
+
+  .note{background:#fffbe6;border:1px solid #f0e6a0;border-radius:10px;padding:10px;margin-top:8px}
+
 
   <script>
     const form = document.getElementById('recipeForm');
