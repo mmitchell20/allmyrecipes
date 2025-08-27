@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>allmyrecipes</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;max-width:900px;margin:40px auto;padding:0 16px;line-height:1.45}
+    h1{font-size:1.6rem;margin-bottom:0.5rem}
+    form{display:flex;gap:8px;margin:16px 0}
+    input[type=url]{flex:1;padding:10px;border:1px solid #ccc;border-radius:10px}
+    button{padding:10px 14px;border:0;border-radius:10px;background:#111;color:#fff;cursor:pointer}
+    button[disabled]{opacity:.6;cursor:not-allowed}
+    .grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:16px}
+    .card{border:1px solid #eee;border-radius:12px;padding:12px}
+    .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    textarea{width:100%;min-height:130px;border:1px solid #ddd;border-radius:10px;padding:10px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace}
+    .muted{color:#666;font-size:.95rem}
+    .error{color:#b00020}
+  </style>
+</head>
+<body>
+  <h1>allmyrecipes</h1>
+  <p class="muted">Paste a recipe link and get the title, ingredients, and steps as plain text.</p>
+
+  <form id="recipeForm">
+    <input type="url" id="url" placeholder="https://example.com/your-favorite-recipe" required />
+    <button id="go" type="submit">Get Recipe</button>
+  </form>
+
+  <div id="status" class="muted"></div>
+  <div id="error" class="error"></div>
+
+  <div class="grid" id="results" style="display:none">
+    <div class="card">
+      <div class="row"><strong>Title</strong><button type="button" data-copy="titleBox">Copy</button></div>
+      <textarea id="titleBox" readonly></textarea>
+    </div>
+    <div class="card">
+      <div class="row"><strong>Ingredients</strong><button type="button" data-copy="ingBox">Copy</button></div>
+      <textarea id="ingBox" readonly></textarea>
+    </div>
+    <div class="card">
+      <div class="row"><strong>Steps</strong><button type="button" data-copy="stepsBox">Copy</button></div>
+      <textarea id="stepsBox" readonly></textarea>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('recipeForm');
+    const goBtn = document.getElementById('go');
+    const statusEl = document.getElementById('status');
+    const errorEl = document.getElementById('error');
+    const results = document.getElementById('results');
+    const titleBox = document.getElementById('titleBox');
+    const ingBox = document.getElementById('ingBox');
+    const stepsBox = document.getElementById('stepsBox');
+
+    document.addEventListener('click', async (e) => {
+      const id = e.target?.dataset?.copy;
+      if (!id) return;
+      const txt = document.getElementById(id).value;
+      try {
+        await navigator.clipboard.writeText(txt);
+        e.target.textContent = 'Copied!';
+        setTimeout(()=> e.target.textContent = 'Copy', 800);
+      } catch {
+        alert('Copy failed — select the text and copy manually.');
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.textContent = '';
+      statusEl.textContent = 'Fetching…';
+      goBtn.disabled = true;
+      results.style.display = 'none';
+
+      const url = document.getElementById('url').value.trim();
+      try {
+        const res = await fetch(`/api/parse?url=${encodeURIComponent(url)}`);
+        if (!res.ok) throw new Error(`Request failed (${res.status})`);
+        const data = await res.json();
+
+        titleBox.value = data.title || '';
+        ingBox.value = (data.ingredients || []).map(x => `• ${x}`).join('\n');
+        stepsBox.value = (data.steps
