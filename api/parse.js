@@ -129,7 +129,7 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const url = req.query.url;
+    const url = (req.query && req.query.url) || new URL(req.url, 'http://localhost').searchParams.get('url');
     if (!url || !/^https?:\/\//i.test(url)) {
       return res.status(400).json({ error: 'Missing or invalid ?url' });
     }
