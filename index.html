@@ -6,27 +6,43 @@
 <title>allmyrecipes — Paste Cleaner</title>
 <style>
   :root { --radius:12px; }
-  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;max-width:980px;margin:40px auto;padding:0 16px;line-height:1.5}
+  body{
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+    max-width:980px;margin:40px auto;padding:0 16px;line-height:1.5
+  }
   h1{font-size:1.8rem;margin:0 0 .5rem}
   .muted{color:#666}
-  .note{background:#fffbe6;border:1px solid #f0e6a0;border-radius:var(--radius);padding:10px;margin:10px 0 18px}
+  .note{
+    background:#fffbe6;border:1px solid #f0e6a0;border-radius:var(--radius);
+    padding:10px;margin:10px 0 18px
+  }
   form{display:grid;gap:12px;margin:16px 0}
   label{font-weight:600}
   input[type=text], input[type=url], textarea{
     width:100%;padding:10px;border:1px solid #ccc;border-radius:var(--radius);font:inherit
   }
-  textarea{min-height:200px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace}
-  button{padding:10px 14px;border:0;border-radius:var(--radius);background:#111;color:#fff;cursor:pointer}
+  textarea{
+    min-height:200px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace
+  }
+  button{
+    padding:10px 14px;border:0;border-radius:var(--radius);background:#111;color:#fff;cursor:pointer
+  }
   button[disabled]{opacity:.6;cursor:not-allowed}
   .row{display:flex;gap:10px;flex-wrap:wrap}
   .col{flex:1 1 300px}
   .card{border:1px solid #eee;border-radius:var(--radius);padding:12px}
   .card h3{margin:0 0 8px}
+  .card h4{margin:0 0 6px}
   textarea.readonly{background:#fafafa}
   .actions{display:flex;gap:8px;flex-wrap:wrap}
   .error{color:#b00020;font-weight:600}
   .success{color:#0a7d2d;font-weight:600}
   .footer{color:#666;margin-top:18px;font-size:.95rem}
+  /* Cookbook layout */
+  #cookbook{scroll-margin-top:24px}
+  #cookbookList{display:flex;flex-wrap:wrap;gap:12px}
+  #cookbookList .card{flex:1 1 260px}
+  #cookbookList .card h4{margin:0 0 6px}
 </style>
 </head>
 <body>
@@ -348,6 +364,172 @@
       statusEl.textContent = '';
     }
   });
+    // =========================
+  // Cookbook storage + UI
+  // =========================
+  const STORE_KEY = 'amr_cb_v1';
+  const NAME_KEY  = 'amr_name';
+
+  const cookbookTitle = $('#cookbookTitle');
+  const ownerNameEl   = $('#ownerName');
+  const nameForm      = $('#nameForm');
+  const searchEl      = $('#search');
+  const listEl        = $('#cookbookList');
+  const countEl       = $('#count');
+  const saveBtn       = $('#saveRecipe');
+
+  function loadCookbook(){
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); }
+    catch { return []; }
+  }
+  function saveCookbook(arr){
+    localStorage.setItem(STORE_KEY, JSON.stringify(arr));
+  }
+  function getName(){
+    return (localStorage.getItem(NAME_KEY) || '').trim();
+  }
+  function setName(n){
+    localStorage.setItem(NAME_KEY, n.trim());
+  }
+  function possessive(name){
+    if (!name) return 'Your Cookbook';
+    const endsWithS = /s$/i.test(name);
+    return `${name}${endsWithS ? '\'' : '\'s'} Cookbook`;
+  }
+
+  function buildTxtFromRecipe(r){
+    const ingredients = r.ingredients.map(x => `• ${x}`).join('\n');
+    const steps = r.steps.map((x,i) => `${i+1}. ${x}`).join('\n');
+    let t = `Title: ${r.title}\n`;
+    if (r.source) t += `Source: ${r.source}\n`;
+    t += `\nIngredients:\n${ingredients}\n\nSteps:\n${steps}`;
+    if (r.servings) t += `\n\nServings: ${r.servings}`;
+    return t;
+  }
+
+  function renderCookbook(filter=''){
+    const name = getName();
+    cookbookTitle.textContent = possessive(name);
+    ownerNameEl.value = name;
+
+    const items = loadCookbook();
+    const q = filter.trim().toLowerCase();
+    const filtered = q
+      ? items.filter(r =>
+          r.title.toLowerCase().includes(q) ||
+          r.ingredients.join(' ').toLowerCase().includes(q) ||
+          (r.servings||'').toLowerCase().includes(q)
+        )
+      : items;
+
+    countEl.textContent = filtered.length ? `${filtered.length} saved` : 'No recipes saved yet';
+
+    listEl.innerHTML = filtered.map(r => {
+      const created = new Date(r.createdAt || Date.now()).toLocaleDateString();
+      const source = r.source ? `<a href="${r.source}" target="_blank" rel="noopener noreferrer">source</a>` : '';
+      const sv = r.servings ? ` • Servings: ${r.servings}` : '';
+      return `
+        <div class="card">
+          <h4>${r.title}</h4>
+          <div class="muted" style="margin-bottom:8px">${created}${sv}${source ? ' • ' + source : ''}</div>
+          <div class="actions">
+            <button type="button" data-open="${r.id}">Open</button>
+            <button type="button" data-export="${r.id}">Download .txt</button>
+            <button type="button" data-delete="${r.id}">Delete</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function getOutputsAsRecipe(){
+    const title = outTitle.value.trim();
+    if (!title) { alert('Please clean first and ensure a Title.'); return null; }
+    const source = outSource.value.trim();
+    const ingredients = outIngredients.value.split('\n')
+      .map(s => s.replace(/^•\s*/, '').trim()).filter(Boolean);
+    const steps = outSteps.value.split('\n')
+      .map(s => s.replace(/^\d+\.\s*/, '').trim()).filter(Boolean);
+    const servings = outServings.value.trim();
+    return {
+      id: 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      title, source, ingredients, steps, servings,
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  // Save current cleaned recipe
+  saveBtn.addEventListener('click', ()=>{
+    const rec = getOutputsAsRecipe();
+    if (!rec) return;
+    const items = loadCookbook();
+    const existingIdx = items.findIndex(x => x.title.toLowerCase() === rec.title.toLowerCase());
+    if (existingIdx >= 0) {
+      if (!confirm(`"${rec.title}" already exists. Overwrite?`)) return;
+      rec.id = items[existingIdx].id; // keep id
+      items[existingIdx] = rec;
+    } else {
+      items.unshift(rec);
+    }
+    saveCookbook(items);
+    renderCookbook(searchEl.value);
+    statusEl.textContent = 'Saved to your cookbook.';
+    setTimeout(()=> statusEl.textContent = '', 1200);
+  });
+
+  // Name personalization
+  nameForm.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    setName(ownerNameEl.value || '');
+    renderCookbook(searchEl.value);
+  });
+
+  // Search
+  searchEl.addEventListener('input', ()=>{
+    renderCookbook(searchEl.value);
+  });
+
+  // Card actions (open / export / delete)
+  listEl.addEventListener('click', (e)=>{
+    const openId = e.target.getAttribute('data-open');
+    const delId = e.target.getAttribute('data-delete');
+    const expId = e.target.getAttribute('data-export');
+    if (!openId && !delId && !expId) return;
+
+    const items = loadCookbook();
+    const findById = (id) => items.find(r => r.id === id);
+
+    if (openId) {
+      const r = findById(openId);
+      if (!r) return;
+      // populate the cleaned outputs and show the Results area
+      outTitle.value = r.title;
+      outSource.value = r.source || '';
+      outIngredients.value = r.ingredients.map(x => '• ' + x).join('\n');
+      outSteps.value = r.steps.map((x,i) => `${i+1}. ${x}`).join('\n');
+      outServings.value = r.servings || '';
+      results.style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    if (expId) {
+      const r = findById(expId);
+      if (!r) return;
+      const txt = buildTxtFromRecipe(r);
+      const safeName = (r.title || 'recipe').replace(/[^\w\-]+/g,'_').slice(0,60);
+      download(`${safeName}.txt`, txt);
+    }
+
+    if (delId) {
+      if (!confirm('Delete this recipe from your cookbook?')) return;
+      const next = items.filter(r => r.id !== delId);
+      saveCookbook(next);
+      renderCookbook(searchEl.value);
+    }
+  });
+
+  // initial render
+  renderCookbook();
 })();
 </script>
 </body>
