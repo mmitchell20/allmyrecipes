@@ -294,6 +294,60 @@
     // clean endings and dedupe tiny lines
     cand = cand.map(s => s.replace(/\s*\.\s*$/,'').trim()).filter(s => s.length > 2);
     return cand;
+    // Break paragraphs into sentence-like chunks, but avoid decimals and common abbreviations.
+function splitSentences(text){
+  const ABBR = ['min','mins','sec','secs','tsp','tbsp','oz','approx','pkg','pt','qt','vs','mr','mrs','dr'];
+  const out = [];
+  let buf = '';
+  const isEOS = (prevChar, nextChar, prevWord) => {
+    // don’t split on decimals like 1.5
+    if (/\d/.test(prevChar) && /\d/.test(nextChar)) return false;
+    // don’t split on abbreviations like “min.”, “tsp.”
+    if (prevWord && ABBR.includes(prevWord.toLowerCase())) return false;
+    // usually end if next char starts a new sentence (capital/digit)
+    return /[A-Z0-9]/.test(nextChar || 'A');
+  };
+
+  for (let i = 0; i < text.length; i++){
+    const ch = text[i];
+    buf += ch;
+    if (/[.!?]/.test(ch)){
+      // look ahead to next non-space
+      let j = i+1; while (j < text.length && /\s/.test(text[j])) j++;
+      // look back to get the last word before punctuation
+      let k = i-1; while (k >= 0 && text[k] === ' ') k--;
+      let wEnd = k; while (k >= 0 && /[A-Za-z]/.test(text[k])) k--;
+      const prevWord = text.slice(k+1, wEnd+1);
+      const prevChar = text[i-1] || '';
+      const nextChar = text[j] || '';
+
+      if (isEOS(prevChar, nextChar, prevWord)) {
+        out.push(buf.trim());
+        buf = '';
+        i = j-1; // jump to just before next non-space
+      }
+    }
+  }
+  if (buf.trim()) out.push(buf.trim());
+  return out;
+}
+
+// If a step is still too long, split it on friendly boundaries.
+function chunkLongStep(s){
+  const MAX = 220; // characters
+  if (s.length <= MAX) return [s.trim()];
+  // First try ; or period before connective words
+  let parts = s.split(/;|\.\s+(?=(?:Then|Next|Meanwhile|After|Before|Once|When|Return|Stir|Add|Bake|Cook|Transfer|Let|Serve|Season|Reduce|Increase|Whisk|Simmer|Boil|Drain)\b)/gi).map(t=>t.trim()).filter(Boolean);
+  // If still long, split on “ then ” / “ and then ”
+  if (parts.length === 1 && parts[0].length > MAX){
+    parts = s.split(/\s+(?:and\s+then|then)\s+/gi).map(t=>t.trim()).filter(Boolean);
+  }
+  // Final safety: if any part still huge, hard-wrap by sentence split
+  if (parts.some(p => p.length > MAX)){
+    parts = splitSentences(s);
+  }
+  return parts.map(t => t.replace(/\s*\.\s*$/,''));
+}
   }
 
   function buildTxt(title, source, ingredients, steps, servings){
