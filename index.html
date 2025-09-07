@@ -244,7 +244,7 @@
   function splitSections(text){
     const lower = text.toLowerCase();
     const idxIng = lower.search(/\bingredients?\b/);
-    const idxSteps = lower.search(/\b(instructions?|directions?|method|preparation|steps?)\b/);
+       const idxSteps = lower.search(/\b(instructions?|directions?|method|preparation|steps?)\b/);
     if (idxIng !== -1 && idxSteps !== -1) {
       const ingText = text.slice(idxIng, idxSteps);
       const stepsText = text.slice(idxSteps);
@@ -369,7 +369,7 @@
     return t;
   }
 
-  // --- UI events ---
+  // --- copy / download buttons ---
   document.addEventListener('click', (e)=>{
     const sel = e.target?.getAttribute('data-copy');
     if (!sel) return;
@@ -377,7 +377,7 @@
     if (el) copyText(el);
   });
 
-  $('#copyAll').addEventListener('click', ()=>{
+  document.getElementById('copyAll').addEventListener('click', ()=>{
     const txt = buildTxt(
       outTitle.value,
       outSource.value,
@@ -388,7 +388,7 @@
     copyText(txt);
   });
 
-  $('#downloadTxt').addEventListener('click', ()=>{
+  document.getElementById('downloadTxt').addEventListener('click', ()=>{
     const txt = buildTxt(
       outTitle.value,
       outSource.value,
@@ -400,13 +400,14 @@
     download(`${safeName}.txt`, txt);
   });
 
-  $('#clearBtn').addEventListener('click', ()=>{
+  document.getElementById('clearBtn').addEventListener('click', ()=>{
     form.reset();
     results.style.display = 'none';
     statusEl.textContent = '';
     errorEl.textContent = '';
   });
 
+  // --- clean action ---
   form.addEventListener('submit', (e)=>{
     e.preventDefault();
     errorEl.textContent = '';
@@ -429,6 +430,7 @@
       outServings.value = servings;
 
       results.style.display = 'block';
+      results.scrollIntoView({ behavior: 'smooth', block: 'start' });
       statusEl.textContent = 'Done.';
     } catch (err){
       console.error(err);
@@ -443,21 +445,19 @@
   const STORE_KEY = 'amr_cb_v1';
   const NAME_KEY  = 'amr_name';
 
-  const cookbookTitle = $('#cookbookTitle');
-  const ownerNameEl   = $('#ownerName');
-  const nameForm      = $('#nameForm');
-  const searchEl      = $('#search');
-  const listEl        = $('#cookbookList');
-  const countEl       = $('#count');
-  const saveBtn       = $('#saveRecipe');
+  const cookbookTitle = document.getElementById('cookbookTitle');
+  const ownerNameEl   = document.getElementById('ownerName');
+  const nameForm      = document.getElementById('nameForm');
+  const searchEl      = document.getElementById('search');
+  const listEl        = document.getElementById('cookbookList');
+  const countEl       = document.getElementById('count');
+  const saveBtn       = document.getElementById('saveRecipe');
 
   function loadCookbook(){
     try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); }
     catch { return []; }
   }
-  function saveCookbook(arr){
-    localStorage.setItem(STORE_KEY, JSON.stringify(arr));
-  }
+  function saveCookbook(arr){ localStorage.setItem(STORE_KEY, JSON.stringify(arr)); }
   function getName(){ return (localStorage.getItem(NAME_KEY) || '').trim(); }
   function setName(n){ localStorage.setItem(NAME_KEY, n.trim()); }
   function possessive(name){
@@ -554,13 +554,11 @@
   });
 
   // Search
-  const searchEl = document.getElementById('search');
   searchEl.addEventListener('input', ()=>{
     renderCookbook(searchEl.value);
   });
 
   // Card actions (open / export / delete)
-  const listEl = document.getElementById('cookbookList');
   listEl.addEventListener('click', (e)=>{
     const openId = e.target.getAttribute('data-open');
     const delId = e.target.getAttribute('data-delete');
