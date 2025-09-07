@@ -178,28 +178,35 @@
 
   // Servings / yield detection
   function detectServings(text){
-    const lines = text.split('\n').map(s=>s.trim());
-    const patterns = [
-      /\bserves?\s*[:\-]?\s*([^\n]+)$/i,
-      /\bservings?\s*[:\-]?\s*([^\n]+)$/i,
-      /\byield\s*[:\-]?\s*([^\n]+)$/i,
-      /\bmakes?\s*[:\-]?\s*([^\n]+)$/i
-    ];
-    for (const line of lines.slice(0, 40)) { // usually near top
-      for (const re of patterns) {
-        const m = line.match(re);
-        if (m && m[1]) return line.replace(/\s+/g,' ');
-      }
-    }
-    // also check near bottom (some blogs put it there)
-    for (const line of lines.slice(-40)) {
-      for (const re of patterns) {
-        const m = line.match(re);
-        if (m && m[1]) return line.replace(/\s+/g,' ');
-      }
+  // Look only for lines that START with "Servings", "Serves", or "Makes"
+  // Avoid step lines like "1) ...", "- ...", or "Serve warm".
+  const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
+  const isStepLine = (l) => /^\d+\s*[.)]\s+/.test(l) || /^[*•-]\s+/.test(l);
+
+  // scan near the top first, then near the bottom
+  const scan = (arr) => {
+    for (const line of arr) {
+      if (isStepLine(line)) continue;
+      // normalize spaces
+      const L = line.replace(/\s+/g, ' ');
+      // require the keyword at the START of the line
+      let m;
+      // "Servings: 4" or "Servings 4"
+      m = L.match(/^\s*servings\b\s*[:\-]?\s*(.+)$/i);
+      if (m && m[1]) return m[1].trim();
+      // "Serves 4" (exact 'serves', not 'serve')
+      m = L.match(/^\s*serves\b\s*[:\-]?\s*(.+)$/i);
+      if (m && m[1]) return m[1].trim();
+      // "Makes 12 cookies"
+      m = L.match(/^\s*makes\b\s*[:\-]?\s*(.+)$/i);
+      if (m && m[1]) return m[1].trim();
     }
     return '';
-  }
+  };
+
+  // usually declared up top, but some blogs put it near the end
+  return scan(lines.slice(0, 50)) || scan(lines.slice(-50));
+}
 
   function splitSections(text){
     const lower = text.toLowerCase();
