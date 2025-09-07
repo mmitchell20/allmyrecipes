@@ -6,6 +6,7 @@
 <title>allmyrecipes — Paste Cleaner</title>
 <style>
   :root { --radius:12px; }
+
   body{
     font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
     max-width:980px;margin:40px auto;padding:0 16px;line-height:1.5
@@ -16,6 +17,7 @@
     background:#fffbe6;border:1px solid #f0e6a0;border-radius:var(--radius);
     padding:10px;margin:10px 0 18px
   }
+
   form{display:grid;gap:12px;margin:16px 0}
   label{font-weight:600}
   input[type=text], input[type=url], textarea{
@@ -28,16 +30,20 @@
     padding:10px 14px;border:0;border-radius:var(--radius);background:#111;color:#fff;cursor:pointer
   }
   button[disabled]{opacity:.6;cursor:not-allowed}
+
   .row{display:flex;gap:10px;flex-wrap:wrap}
   .col{flex:1 1 300px}
+
   .card{border:1px solid #eee;border-radius:var(--radius);padding:12px}
   .card h3{margin:0 0 8px}
   .card h4{margin:0 0 6px}
+
   textarea.readonly{background:#fafafa}
   .actions{display:flex;gap:8px;flex-wrap:wrap}
   .error{color:#b00020;font-weight:600}
   .success{color:#0a7d2d;font-weight:600}
   .footer{color:#666;margin-top:18px;font-size:.95rem}
+
   /* Cookbook layout */
   #cookbook{scroll-margin-top:24px}
   #cookbookList{display:flex;flex-wrap:wrap;gap:12px}
@@ -50,6 +56,7 @@
   <p class="muted">Paste any messy recipe text and get clean <em>Ingredients</em> + <em>Steps</em>. No scraping.</p>
   <div class="note"><strong>Heads up:</strong> Use this for <em>personal</em> use. Don’t republish extracted content.</div>
 
+  <!-- FORM -->
   <form id="cleaner">
     <div>
       <label for="title">What are we making today?</label>
@@ -75,6 +82,7 @@
     <div id="error" class="error" role="alert"></div>
   </form>
 
+  <!-- RESULTS -->
   <div id="results" style="display:none">
     <div class="row">
       <div class="col card">
@@ -85,23 +93,6 @@
         <h3>Source</h3>
         <textarea id="outSource" class="readonly" readonly></textarea>
       </div>
-      <hr>
-<section id="cookbook" style="margin-top:24px">
-  <div class="row" style="justify-content:space-between;align-items:center">
-    <h2 id="cookbookTitle" style="margin:0">Your Cookbook</h2>
-    <form id="nameForm" class="row" style="gap:8px;align-items:center">
-      <label for="ownerName" class="muted">Your name:</label>
-      <input id="ownerName" type="text" placeholder="e.g., Mo" style="max-width:220px">
-      <button type="submit">Update</button>
-    </form>
-  </div>
-  <div class="row" style="margin-top:10px;gap:10px">
-    <input id="search" type="text" placeholder="Search recipes…" style="flex:2">
-    <span id="count" class="muted" style="align-self:center"></span>
-  </div>
-  <div id="cookbookList" class="row" style="margin-top:12px;gap:12px"></div>
-</section>
-
     </div>
 
     <div class="row" style="margin-top:12px">
@@ -137,10 +128,30 @@
     </div>
   </div>
 
+  <hr>
+
+  <!-- COOKBOOK -->
+  <section id="cookbook" style="margin-top:24px">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h2 id="cookbookTitle" style="margin:0">Your Cookbook</h2>
+      <form id="nameForm" class="row" style="gap:8px;align-items:center">
+        <label for="ownerName" class="muted">Your name:</label>
+        <input id="ownerName" type="text" placeholder="e.g., Mo" style="max-width:220px">
+        <button type="submit">Update</button>
+      </form>
+    </div>
+
+    <div class="row" style="margin-top:10px;gap:10px">
+      <input id="search" type="text" placeholder="Search recipes…" style="flex:2">
+      <span id="count" class="muted" style="align-self:center"></span>
+    </div>
+
+    <div id="cookbookList" class="row" style="margin-top:12px;gap:12px"></div>
+  </section>
+
 <script>
 (function(){
   const $ = (sel) => document.querySelector(sel);
-  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
   const form = $('#cleaner');
   const titleEl = $('#title');
@@ -176,7 +187,7 @@
   function normalize(text) {
     return text
       .replace(/\r\n/g, '\n')
-      .replace(/\u2022|\u25CF|\u25A0|\u2219/g, '*') // bullets -> *
+      .replace(/[\u2022\u25CF\u25A0\u2219]/g, '*') // bullets -> *
       .replace(/\t/g, ' ')
       .replace(/\u00A0/g, ' ')
       .replace(/[ ]{2,}/g, ' ')
@@ -186,7 +197,7 @@
 
   // Detect likely "ingredients" lines
   const UNIT_RE = new RegExp(String.raw`\b(?:cup|cups|c|tablespoon|tablespoons|tbsp|tbs|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|milliliter|milliliters|ml|liter|liters|l|pinch|dash|clove|cloves|stick|sticks|slice|slices|can|cans|package|packages|pkt|pint|pints|quart|quarts|qt|qts)\b`, 'i');
-  const QTY_RE = /(^|\s)(\d+([\/.-]\d+)?|\d+\s+\d\/\d|¼|½|¾|⅓|⅔|⅛|⅜|⅝|⅞)/; // 1, 1/2, 1-1/2, 1 1/2, unicode fracs
+  const QTY_RE = /(^|\s)(\d+([\/.-]\d+)?|\d+\s+\d\/\d|¼|½|¾|⅓|⅔|⅛|⅜|⅝|⅞)/;
   const BULLET_RE = /^\s*(?:[-*•]|[\d]+[.)])\s+/;
 
   function isIngredientLine(line){
@@ -202,152 +213,149 @@
       .replace(/\s*,\s*/g, ', ')
       .replace(/\s{2,}/g, ' ')
       .replace(/\s*\.\s*$/, '');
-    // common fixups
     s = s.replace(/\b(tsp)\.\b/ig, 'tsp')
          .replace(/\b(tbsp)\.\b/ig, 'tbsp')
          .replace(/\b(oz)\.\b/ig, 'oz');
     return s;
   }
 
-  // Servings / yield detection
+  // Servings / yield detection (strict: Servings/Serves/Makes at line start)
   function detectServings(text){
-  // Look only for lines that START with "Servings", "Serves", or "Makes"
-  // Avoid step lines like "1) ...", "- ...", or "Serve warm".
-  const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
-  const isStepLine = (l) => /^\d+\s*[.)]\s+/.test(l) || /^[*•-]\s+/.test(l);
+    const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
+    const isStepLine = (l) => /^\d+\s*[.)]\s+/.test(l) || /^[*•-]\s+/.test(l);
 
-  // scan near the top first, then near the bottom
-  const scan = (arr) => {
-    for (const line of arr) {
-      if (isStepLine(line)) continue;
-      // normalize spaces
-      const L = line.replace(/\s+/g, ' ');
-      // require the keyword at the START of the line
-      let m;
-      // "Servings: 4" or "Servings 4"
-      m = L.match(/^\s*servings\b\s*[:\-]?\s*(.+)$/i);
-      if (m && m[1]) return m[1].trim();
-      // "Serves 4" (exact 'serves', not 'serve')
-      m = L.match(/^\s*serves\b\s*[:\-]?\s*(.+)$/i);
-      if (m && m[1]) return m[1].trim();
-      // "Makes 12 cookies"
-      m = L.match(/^\s*makes\b\s*[:\-]?\s*(.+)$/i);
-      if (m && m[1]) return m[1].trim();
-    }
-    return '';
-  };
-
-  // usually declared up top, but some blogs put it near the end
-  return scan(lines.slice(0, 50)) || scan(lines.slice(-50));
-}
+    const scan = (arr) => {
+      for (const line of arr) {
+        if (isStepLine(line)) continue;
+        const L = line.replace(/\s+/g, ' ');
+        let m;
+        m = L.match(/^\s*servings\b\s*[:\-]?\s*(.+)$/i);
+        if (m && m[1]) return m[1].trim();
+        m = L.match(/^\s*serves\b\s*[:\-]?\s*(.+)$/i);
+        if (m && m[1]) return m[1].trim();
+        m = L.match(/^\s*makes\b\s*[:\-]?\s*(.+)$/i);
+        if (m && m[1]) return m[1].trim();
+      }
+      return '';
+    };
+    return scan(lines.slice(0, 50)) || scan(lines.slice(-50));
+  }
 
   function splitSections(text){
     const lower = text.toLowerCase();
     const idxIng = lower.search(/\bingredients?\b/);
     const idxSteps = lower.search(/\b(instructions?|directions?|method|preparation|steps?)\b/);
     if (idxIng !== -1 && idxSteps !== -1) {
-      const startIng = idxIng;
-      const startSteps = idxSteps;
-      const ingText = text.slice(startIng, startSteps);
-      const stepsText = text.slice(startSteps);
+      const ingText = text.slice(idxIng, idxSteps);
+      const stepsText = text.slice(idxSteps);
       return { ingText, stepsText };
     }
     return { ingText: '', stepsText: '' };
   }
 
+  // -------- smarter step splitting helpers --------
+  function splitSentences(text){
+    const ABBR = ['min','mins','sec','secs','tsp','tbsp','oz','approx','pkg','pt','qt','vs','mr','mrs','dr'];
+    const out = [];
+    let buf = '';
+    const isEOS = (prevChar, nextChar, prevWord) => {
+      if (/\d/.test(prevChar) && /\d/.test(nextChar)) return false; // don't split 1.5
+      if (prevWord && ABBR.includes(prevWord.toLowerCase())) return false; // don't split "min."
+      return /[A-Z0-9]/.test(nextChar || 'A');
+    };
+
+    for (let i = 0; i < text.length; i++){
+      const ch = text[i];
+      buf += ch;
+      if (/[.!?]/.test(ch)){
+        let j = i+1; while (j < text.length && /\s/.test(text[j])) j++;
+        let k = i-1; while (k >= 0 && text[k] === ' ') k--;
+        let wEnd = k; while (k >= 0 && /[A-Za-z]/.test(text[k])) k--;
+        const prevWord = text.slice(k+1, wEnd+1);
+        const prevChar = text[i-1] || '';
+        const nextChar = text[j] || '';
+        if (isEOS(prevChar, nextChar, prevWord)) {
+          out.push(buf.trim());
+          buf = '';
+          i = j-1;
+        }
+      }
+    }
+    if (buf.trim()) out.push(buf.trim());
+    return out;
+  }
+
+  function chunkLongStep(s){
+    const MAX = 220; // adjust down if you want shorter steps
+    if (s.length <= MAX) return [s.trim()];
+    let parts = s.split(/;|\.\s+(?=(?:Then|Next|Meanwhile|After|Before|Once|When|Return|Stir|Add|Bake|Cook|Transfer|Let|Serve|Season|Reduce|Increase|Whisk|Simmer|Boil|Drain)\b)/gi)
+                 .map(t=>t.trim()).filter(Boolean);
+    if (parts.length === 1 && parts[0].length > MAX){
+      parts = s.split(/\s+(?:and\s+then|then)\s+/gi).map(t=>t.trim()).filter(Boolean);
+    }
+    if (parts.some(p => p.length > MAX)){
+      parts = splitSentences(s);
+    }
+    return parts.map(t => t.replace(/\s*\.\s*$/,''));
+  }
+
   function extractIngredients(text){
     const lines = text.split('\n');
     let ing = [];
-    for (const line of lines) {
-      if (isIngredientLine(line)) ing.push(cleanIngredient(line));
-    }
-    // If none detected from sectioned text, try whole paste
+    for (const line of lines) if (isIngredientLine(line)) ing.push(cleanIngredient(line));
     if (ing.length < 2) {
-      const all = text.split('\n');
-      ing = all.filter(isIngredientLine).map(cleanIngredient);
+      ing = text.split('\n').filter(isIngredientLine).map(cleanIngredient);
     }
-    // de-dupe conservatively
     const seen = new Set(); const out = [];
     for (const x of ing) { const k = x.toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(x); } }
     return out;
   }
 
   function extractSteps(text){
-    // Prefer text after an "Instructions/Directions/Method/Steps" header if present
     let body = text;
     const m = text.match(/(?:instructions?|directions?|method|preparation|steps?)\s*[:\-]?\s*/i);
     if (m) body = text.slice(text.toLowerCase().indexOf(m[0].toLowerCase()) + m[0].length);
 
-    // split by newlines that look like bullets or numbers; otherwise by paragraphs
+    body = body
+      .replace(/(?:^|\s)(\d{1,2}[.)])\s+/g, '\n$1 ')
+      .replace(/[\u2022\u25CF\u25A0\u2219]/g, '\n• ')
+      .replace(/\r\n/g, '\n');
+
     const lines = body.split('\n').map(s => s.trim()).filter(Boolean);
-    let cand = [];
 
-    // collect numbered/bulleted first
-    for (const l of lines) {
-      if (/^\d+\s*[.)]\s+/.test(l) || /^[*•-]\s+/.test(l)) cand.push(l.replace(/^\d+\s*[.)]\s+|^[*•-]\s+/,''));
-    }
-    if (cand.length < 2) {
-      // fallback: paragraph split (empty line separator)
-      cand = body.split(/\n{2,}/).map(s => s.replace(/\s+/g,' ').trim()).filter(Boolean);
-    }
-
-    // clean endings and dedupe tiny lines
-    cand = cand.map(s => s.replace(/\s*\.\s*$/,'').trim()).filter(s => s.length > 2);
-    return cand;
-    // Break paragraphs into sentence-like chunks, but avoid decimals and common abbreviations.
-function splitSentences(text){
-  const ABBR = ['min','mins','sec','secs','tsp','tbsp','oz','approx','pkg','pt','qt','vs','mr','mrs','dr'];
-  const out = [];
-  let buf = '';
-  const isEOS = (prevChar, nextChar, prevWord) => {
-    // don’t split on decimals like 1.5
-    if (/\d/.test(prevChar) && /\d/.test(nextChar)) return false;
-    // don’t split on abbreviations like “min.”, “tsp.”
-    if (prevWord && ABBR.includes(prevWord.toLowerCase())) return false;
-    // usually end if next char starts a new sentence (capital/digit)
-    return /[A-Z0-9]/.test(nextChar || 'A');
-  };
-
-  for (let i = 0; i < text.length; i++){
-    const ch = text[i];
-    buf += ch;
-    if (/[.!?]/.test(ch)){
-      // look ahead to next non-space
-      let j = i+1; while (j < text.length && /\s/.test(text[j])) j++;
-      // look back to get the last word before punctuation
-      let k = i-1; while (k >= 0 && text[k] === ' ') k--;
-      let wEnd = k; while (k >= 0 && /[A-Za-z]/.test(text[k])) k--;
-      const prevWord = text.slice(k+1, wEnd+1);
-      const prevChar = text[i-1] || '';
-      const nextChar = text[j] || '';
-
-      if (isEOS(prevChar, nextChar, prevWord)) {
-        out.push(buf.trim());
-        buf = '';
-        i = j-1; // jump to just before next non-space
+    const steps = [];
+    let cur = '';
+    const startsStep = (l) => /^\d{1,3}\s*[.)]\s+/.test(l) || /^[*•-]\s+/.test(l) || /^step\s*\d+/i.test(l);
+    for (const l of lines){
+      if (startsStep(l)) {
+        if (cur.trim()) steps.push(cur.trim());
+        cur = l.replace(/^\d{1,3}\s*[.)]\s+|^[*•-]\s+|^step\s*\d+\s*[:.)-]?\s*/i,'').trim();
+      } else {
+        cur += (cur ? ' ' : '') + l;
       }
     }
-  }
-  if (buf.trim()) out.push(buf.trim());
-  return out;
-}
+    if (cur.trim()) steps.push(cur.trim());
 
-// If a step is still too long, split it on friendly boundaries.
-function chunkLongStep(s){
-  const MAX = 220; // characters
-  if (s.length <= MAX) return [s.trim()];
-  // First try ; or period before connective words
-  let parts = s.split(/;|\.\s+(?=(?:Then|Next|Meanwhile|After|Before|Once|When|Return|Stir|Add|Bake|Cook|Transfer|Let|Serve|Season|Reduce|Increase|Whisk|Simmer|Boil|Drain)\b)/gi).map(t=>t.trim()).filter(Boolean);
-  // If still long, split on “ then ” / “ and then ”
-  if (parts.length === 1 && parts[0].length > MAX){
-    parts = s.split(/\s+(?:and\s+then|then)\s+/gi).map(t=>t.trim()).filter(Boolean);
-  }
-  // Final safety: if any part still huge, hard-wrap by sentence split
-  if (parts.some(p => p.length > MAX)){
-    parts = splitSentences(s);
-  }
-  return parts.map(t => t.replace(/\s*\.\s*$/,''));
-}
+    let out = steps.length >= 3 ? steps : splitSentences(body);
+
+    out = out
+      .map(s => s.replace(/^\d+\s*[.)]\s+/, '').trim())
+      .filter(s => s.length > 2);
+
+    const merged = [];
+    for (const s of out){
+      const words = s.split(/\s+/).length;
+      if (merged.length && words < 4){
+        merged[merged.length-1] = (merged[merged.length-1] + ' ' + s).replace(/\s+/g,' ').trim();
+      } else {
+        merged.push(s);
+      }
+    }
+
+    const final = [];
+    for (const s of merged) final.push(...chunkLongStep(s));
+
+    return final.map(x => x.replace(/\s*\.\s*$/,'')).filter(Boolean);
   }
 
   function buildTxt(title, source, ingredients, steps, servings){
@@ -370,12 +378,24 @@ function chunkLongStep(s){
   });
 
   $('#copyAll').addEventListener('click', ()=>{
-    const txt = buildTxt(outTitle.value, outSource.value, outIngredients.value.split('\n').filter(Boolean).map(s=>s.replace(/^•\s*/,'')), outSteps.value.split('\n').filter(Boolean).map(s=>s.replace(/^\d+\.\s*/,'')), outServings.value.trim());
+    const txt = buildTxt(
+      outTitle.value,
+      outSource.value,
+      outIngredients.value.split('\n').filter(Boolean).map(s=>s.replace(/^•\s*/,'')),
+      outSteps.value.split('\n').filter(Boolean).map(s=>s.replace(/^\d+\.\s*/,'')),
+      outServings.value.trim()
+    );
     copyText(txt);
   });
 
   $('#downloadTxt').addEventListener('click', ()=>{
-    const txt = buildTxt(outTitle.value, outSource.value, outIngredients.value.split('\n').filter(Boolean).map(s=>s.replace(/^•\s*/,'')), outSteps.value.split('\n').filter(Boolean).map(s=>s.replace(/^\d+\.\s*/,'')), outServings.value.trim());
+    const txt = buildTxt(
+      outTitle.value,
+      outSource.value,
+      outIngredients.value.split('\n').filter(Boolean).map(s=>s.replace(/^•\s*/,'')),
+      outSteps.value.split('\n').filter(Boolean).map(s=>s.replace(/^\d+\.\s*/,'')),
+      outServings.value.trim()
+    );
     const safeName = (outTitle.value || 'recipe').replace(/[^\w\-]+/g,'_').slice(0,60);
     download(`${safeName}.txt`, txt);
   });
@@ -416,7 +436,8 @@ function chunkLongStep(s){
       statusEl.textContent = '';
     }
   });
-    // =========================
+
+  // =========================
   // Cookbook storage + UI
   // =========================
   const STORE_KEY = 'amr_cb_v1';
@@ -437,12 +458,8 @@ function chunkLongStep(s){
   function saveCookbook(arr){
     localStorage.setItem(STORE_KEY, JSON.stringify(arr));
   }
-  function getName(){
-    return (localStorage.getItem(NAME_KEY) || '').trim();
-  }
-  function setName(n){
-    localStorage.setItem(NAME_KEY, n.trim());
-  }
+  function getName(){ return (localStorage.getItem(NAME_KEY) || '').trim(); }
+  function setName(n){ localStorage.setItem(NAME_KEY, n.trim()); }
   function possessive(name){
     if (!name) return 'Your Cookbook';
     const endsWithS = /s$/i.test(name);
@@ -465,7 +482,7 @@ function chunkLongStep(s){
     ownerNameEl.value = name;
 
     const items = loadCookbook();
-    const q = filter.trim().toLowerCase();
+    const q = (filter || '').trim().toLowerCase();
     const filtered = q
       ? items.filter(r =>
           r.title.toLowerCase().includes(q) ||
@@ -537,11 +554,13 @@ function chunkLongStep(s){
   });
 
   // Search
+  const searchEl = document.getElementById('search');
   searchEl.addEventListener('input', ()=>{
     renderCookbook(searchEl.value);
   });
 
   // Card actions (open / export / delete)
+  const listEl = document.getElementById('cookbookList');
   listEl.addEventListener('click', (e)=>{
     const openId = e.target.getAttribute('data-open');
     const delId = e.target.getAttribute('data-delete');
@@ -554,7 +573,6 @@ function chunkLongStep(s){
     if (openId) {
       const r = findById(openId);
       if (!r) return;
-      // populate the cleaned outputs and show the Results area
       outTitle.value = r.title;
       outSource.value = r.source || '';
       outIngredients.value = r.ingredients.map(x => '• ' + x).join('\n');
