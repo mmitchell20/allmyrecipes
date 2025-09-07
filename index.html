@@ -1,94 +1,328 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>allmyrecipes</title>
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;max-width:900px;margin:40px auto;padding:0 16px;line-height:1.45}
-    h1{font-size:1.6rem;margin-bottom:0.5rem}
-    form{display:flex;gap:8px;margin:16px 0}
-    input[type=url]{flex:1;padding:10px;border:1px solid #ccc;border-radius:10px}
-    button{padding:10px 14px;border:0;border-radius:10px;background:#111;color:#fff;cursor:pointer}
-    button[disabled]{opacity:.6;cursor:not-allowed}
-    .grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:16px}
-    .card{border:1px solid #eee;border-radius:12px;padding:12px}
-    .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-    textarea{width:100%;min-height:130px;border:1px solid #ddd;border-radius:10px;padding:10px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace}
-    .muted{color:#666;font-size:.95rem}
-    .error{color:#b00020}
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>allmyrecipes — Paste Cleaner</title>
+<style>
+  :root { --radius:12px; }
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;max-width:980px;margin:40px auto;padding:0 16px;line-height:1.5}
+  h1{font-size:1.8rem;margin:0 0 .5rem}
+  .muted{color:#666}
+  .note{background:#fffbe6;border:1px solid #f0e6a0;border-radius:var(--radius);padding:10px;margin:10px 0 18px}
+  form{display:grid;gap:12px;margin:16px 0}
+  label{font-weight:600}
+  input[type=text], input[type=url], textarea{
+    width:100%;padding:10px;border:1px solid #ccc;border-radius:var(--radius);font:inherit
+  }
+  textarea{min-height:200px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace}
+  button{padding:10px 14px;border:0;border-radius:var(--radius);background:#111;color:#fff;cursor:pointer}
+  button[disabled]{opacity:.6;cursor:not-allowed}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .col{flex:1 1 300px}
+  .card{border:1px solid #eee;border-radius:var(--radius);padding:12px}
+  .card h3{margin:0 0 8px}
+  textarea.readonly{background:#fafafa}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  .error{color:#b00020;font-weight:600}
+  .success{color:#0a7d2d;font-weight:600}
+  .footer{color:#666;margin-top:18px;font-size:.95rem}
+</style>
 </head>
 <body>
   <h1>allmyrecipes</h1>
-  <div class="note">
-  <strong>Heads up:</strong> Use this only for <em>personal</em> use. Don’t republish extracted content and please respect each site’s Terms of Service.
-</div>
+  <p class="muted">Paste any messy recipe text and get clean <em>Ingredients</em> + <em>Steps</em>. No scraping.</p>
+  <div class="note"><strong>Heads up:</strong> Use this for <em>personal</em> use. Don’t republish extracted content.</div>
 
-  <p class="muted">Paste a recipe link and get the title, ingredients, and steps as plain text.</p>
+  <form id="cleaner">
+    <div>
+      <label for="title">What are we making today?</label>
+      <input id="title" type="text" placeholder="e.g., Lemon Garlic Pasta" required />
+    </div>
 
-  <form id="recipeForm">
-    <input type="url" id="url" placeholder="https://example.com/your-favorite-recipe" required />
-    <button id="go" type="submit">Get Recipe</button>
+    <div>
+      <label for="source">Where'd you find the recipe? (original link)</label>
+      <input id="source" type="url" placeholder="https://example.com/the-recipe" />
+    </div>
+
+    <div>
+      <label for="raw">Ok, paste all the text you have and let's clean this up and get cooking!</label>
+      <textarea id="raw" placeholder="Paste the whole recipe text here…" required></textarea>
+    </div>
+
+    <div class="row">
+      <button id="cleanBtn" type="submit">Clean it up</button>
+      <button id="clearBtn" type="button">Clear</button>
+    </div>
+
+    <div id="status" class="muted"></div>
+    <div id="error" class="error" role="alert"></div>
   </form>
 
-  <div id="status" class="muted"></div>
-  <div id="error" class="error"></div>
+  <div id="results" style="display:none">
+    <div class="row">
+      <div class="col card">
+        <h3>Title</h3>
+        <textarea id="outTitle" class="readonly" readonly></textarea>
+      </div>
+      <div class="col card">
+        <h3>Source</h3>
+        <textarea id="outSource" class="readonly" readonly></textarea>
+      </div>
+    </div>
 
-  <div class="grid" id="results" style="display:none">
-    <div class="card">
-      <div class="row"><strong>Title</strong><button type="button" data-copy="titleBox">Copy</button></div>
-      <textarea id="titleBox" readonly></textarea>
+    <div class="row" style="margin-top:12px">
+      <div class="col card">
+        <h3>Ingredients</h3>
+        <textarea id="outIngredients" class="readonly" readonly></textarea>
+        <div class="actions" style="margin-top:8px">
+          <button type="button" data-copy="#outIngredients">Copy ingredients</button>
+        </div>
+      </div>
+      <div class="col card">
+        <h3>Steps</h3>
+        <textarea id="outSteps" class="readonly" readonly></textarea>
+        <div class="actions" style="margin-top:8px">
+          <button type="button" data-copy="#outSteps">Copy steps</button>
+        </div>
+      </div>
     </div>
-    <div class="card">
-      <div class="row"><strong>Ingredients</strong><button type="button" data-copy="ingBox">Copy</button></div>
-      <textarea id="ingBox" readonly></textarea>
+
+    <div class="card" style="margin-top:12px">
+      <h3>Servings</h3>
+      <textarea id="outServings" class="readonly" readonly></textarea>
     </div>
-    <div class="card">
-      <div class="row"><strong>Steps</strong><button type="button" data-copy="stepsBox">Copy</button></div>
-      <textarea id="stepsBox" readonly></textarea>
+
+    <div class="actions" style="margin-top:12px">
+      <button id="copyAll" type="button">Copy everything</button>
+      <button id="downloadTxt" type="button">Download .txt</button>
+      <!-- we’ll add Save-to-Dashboard in the next steps -->
+    </div>
+
+    <div class="footer">
+      Tip: You can tweak anything above, then copy/download again.
     </div>
   </div>
 
-  .note{background:#fffbe6;border:1px solid #f0e6a0;border-radius:10px;padding:10px;margin-top:8px}
+<script>
+(function(){
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
+  const form = $('#cleaner');
+  const titleEl = $('#title');
+  const sourceEl = $('#source');
+  const rawEl = $('#raw');
+  const statusEl = $('#status');
+  const errorEl = $('#error');
+  const results = $('#results');
+  const outTitle = $('#outTitle');
+  const outSource = $('#outSource');
+  const outIngredients = $('#outIngredients');
+  const outSteps = $('#outSteps');
+  const outServings = $('#outServings');
 
-  <script>
-    const form = document.getElementById('recipeForm');
-    const goBtn = document.getElementById('go');
-    const statusEl = document.getElementById('status');
-    const errorEl = document.getElementById('error');
-    const results = document.getElementById('results');
-    const titleBox = document.getElementById('titleBox');
-    const ingBox = document.getElementById('ingBox');
-    const stepsBox = document.getElementById('stepsBox');
+  // --- small helpers ---
+  function copyText(el) {
+    navigator.clipboard.writeText(typeof el === 'string' ? el : el.value).then(() => {
+      statusEl.textContent = 'Copied!';
+      setTimeout(()=> statusEl.textContent = '', 900);
+    }).catch(()=> alert('Copy failed — select and copy manually.'));
+  }
 
-    document.addEventListener('click', async (e) => {
-      const id = e.target?.dataset?.copy;
-      if (!id) return;
-      const txt = document.getElementById(id).value;
-      try {
-        await navigator.clipboard.writeText(txt);
-        e.target.textContent = 'Copied!';
-        setTimeout(()=> e.target.textContent = 'Copy', 800);
-      } catch {
-        alert('Copy failed — select the text and copy manually.');
+  function download(filename, text) {
+    const blob = new Blob([text], {type:'text/plain'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // Normalize bullets and whitespace
+  function normalize(text) {
+    return text
+      .replace(/\r\n/g, '\n')
+      .replace(/\u2022|\u25CF|\u25A0|\u2219/g, '*') // bullets -> *
+      .replace(/\t/g, ' ')
+      .replace(/\u00A0/g, ' ')
+      .replace(/[ ]{2,}/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  // Detect likely "ingredients" lines
+  const UNIT_RE = new RegExp(String.raw`\b(?:cup|cups|c|tablespoon|tablespoons|tbsp|tbs|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|milliliter|milliliters|ml|liter|liters|l|pinch|dash|clove|cloves|stick|sticks|slice|slices|can|cans|package|packages|pkt|pint|pints|quart|quarts|qt|qts)\b`, 'i');
+  const QTY_RE = /(^|\s)(\d+([\/.-]\d+)?|\d+\s+\d\/\d|¼|½|¾|⅓|⅔|⅛|⅜|⅝|⅞)/; // 1, 1/2, 1-1/2, 1 1/2, unicode fracs
+  const BULLET_RE = /^\s*(?:[-*•]|[\d]+[.)])\s+/;
+
+  function isIngredientLine(line){
+    const l = line.trim();
+    if (!l) return false;
+    if (/^(ingredients?)\s*[:\-]/i.test(l)) return false; // header
+    return BULLET_RE.test(l) || (QTY_RE.test(l) && UNIT_RE.test(l));
+  }
+
+  function cleanIngredient(line){
+    let s = line.trim()
+      .replace(BULLET_RE, '')
+      .replace(/\s*,\s*/g, ', ')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s*\.\s*$/, '');
+    // common fixups
+    s = s.replace(/\b(tsp)\.\b/ig, 'tsp')
+         .replace(/\b(tbsp)\.\b/ig, 'tbsp')
+         .replace(/\b(oz)\.\b/ig, 'oz');
+    return s;
+  }
+
+  // Servings / yield detection
+  function detectServings(text){
+    const lines = text.split('\n').map(s=>s.trim());
+    const patterns = [
+      /\bserves?\s*[:\-]?\s*([^\n]+)$/i,
+      /\bservings?\s*[:\-]?\s*([^\n]+)$/i,
+      /\byield\s*[:\-]?\s*([^\n]+)$/i,
+      /\bmakes?\s*[:\-]?\s*([^\n]+)$/i
+    ];
+    for (const line of lines.slice(0, 40)) { // usually near top
+      for (const re of patterns) {
+        const m = line.match(re);
+        if (m && m[1]) return line.replace(/\s+/g,' ');
       }
-    });
+    }
+    // also check near bottom (some blogs put it there)
+    for (const line of lines.slice(-40)) {
+      for (const re of patterns) {
+        const m = line.match(re);
+        if (m && m[1]) return line.replace(/\s+/g,' ');
+      }
+    }
+    return '';
+  }
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errorEl.textContent = '';
-      statusEl.textContent = 'Fetching…';
-      goBtn.disabled = true;
-      results.style.display = 'none';
+  function splitSections(text){
+    const lower = text.toLowerCase();
+    const idxIng = lower.search(/\bingredients?\b/);
+    const idxSteps = lower.search(/\b(instructions?|directions?|method|preparation|steps?)\b/);
+    if (idxIng !== -1 && idxSteps !== -1) {
+      const startIng = idxIng;
+      const startSteps = idxSteps;
+      const ingText = text.slice(startIng, startSteps);
+      const stepsText = text.slice(startSteps);
+      return { ingText, stepsText };
+    }
+    return { ingText: '', stepsText: '' };
+  }
 
-      const url = document.getElementById('url').value.trim();
-      try {
-        const res = await fetch(`/api/parse?url=${encodeURIComponent(url)}`);
-        if (!res.ok) throw new Error(`Request failed (${res.status})`);
-        const data = await res.json();
+  function extractIngredients(text){
+    const lines = text.split('\n');
+    let ing = [];
+    for (const line of lines) {
+      if (isIngredientLine(line)) ing.push(cleanIngredient(line));
+    }
+    // If none detected from sectioned text, try whole paste
+    if (ing.length < 2) {
+      const all = text.split('\n');
+      ing = all.filter(isIngredientLine).map(cleanIngredient);
+    }
+    // de-dupe conservatively
+    const seen = new Set(); const out = [];
+    for (const x of ing) { const k = x.toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(x); } }
+    return out;
+  }
 
-        titleBox.value = data.title || '';
-        ingBox.value = (data.ingredients || []).map(x => `• ${x}`).join('\n');
-        stepsBox.value = (data.steps
+  function extractSteps(text){
+    // Prefer text after an "Instructions/Directions/Method/Steps" header if present
+    let body = text;
+    const m = text.match(/(?:instructions?|directions?|method|preparation|steps?)\s*[:\-]?\s*/i);
+    if (m) body = text.slice(text.toLowerCase().indexOf(m[0].toLowerCase()) + m[0].length);
+
+    // split by newlines that look like bullets or numbers; otherwise by paragraphs
+    const lines = body.split('\n').map(s => s.trim()).filter(Boolean);
+    let cand = [];
+
+    // collect numbered/bulleted first
+    for (const l of lines) {
+      if (/^\d+\s*[.)]\s+/.test(l) || /^[*•-]\s+/.test(l)) cand.push(l.replace(/^\d+\s*[.)]\s+|^[*•-]\s+/,''));
+    }
+    if (cand.length < 2) {
+      // fallback: paragraph split (empty line separator)
+      cand = body.split(/\n{2,}/).map(s => s.replace(/\s+/g,' ').trim()).filter(Boolean);
+    }
+
+    // clean endings and dedupe tiny lines
+    cand = cand.map(s => s.replace(/\s*\.\s*$/,'').trim()).filter(s => s.length > 2);
+    return cand;
+  }
+
+  function buildTxt(title, source, ingredients, steps, servings){
+    let t = `Title: ${title}\n`;
+    if (source) t += `Source: ${source}\n`;
+    t += '\nIngredients:\n';
+    t += ingredients.map(x => `• ${x}`).join('\n') + '\n\n';
+    t += 'Steps:\n';
+    t += steps.map((x,i) => `${i+1}. ${x}`).join('\n');
+    if (servings) t += `\n\nServings: ${servings}`;
+    return t;
+  }
+
+  // --- UI events ---
+  document.addEventListener('click', (e)=>{
+    const sel = e.target?.getAttribute('data-copy');
+    if (!sel) return;
+    const el = document.querySelector(sel);
+    if (el) copyText(el);
+  });
+
+  $('#copyAll').addEventListener('click', ()=>{
+    const txt = buildTxt(outTitle.value, outSource.value, outIngredients.value.split('\n').filter(Boolean).map(s=>s.replace(/^•\s*/,'')), outSteps.value.split('\n').filter(Boolean).map(s=>s.replace(/^\d+\.\s*/,'')), outServings.value.trim());
+    copyText(txt);
+  });
+
+  $('#downloadTxt').addEventListener('click', ()=>{
+    const txt = buildTxt(outTitle.value, outSource.value, outIngredients.value.split('\n').filter(Boolean).map(s=>s.replace(/^•\s*/,'')), outSteps.value.split('\n').filter(Boolean).map(s=>s.replace(/^\d+\.\s*/,'')), outServings.value.trim());
+    const safeName = (outTitle.value || 'recipe').replace(/[^\w\-]+/g,'_').slice(0,60);
+    download(`${safeName}.txt`, txt);
+  });
+
+  $('#clearBtn').addEventListener('click', ()=>{
+    form.reset();
+    results.style.display = 'none';
+    statusEl.textContent = '';
+    errorEl.textContent = '';
+  });
+
+  form.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    errorEl.textContent = '';
+    statusEl.textContent = 'Cleaning…';
+
+    const title = titleEl.value.trim();
+    const source = sourceEl.value.trim();
+    const raw = normalize(rawEl.value);
+
+    try {
+      const servings = detectServings(raw);
+      const { ingText, stepsText } = splitSections(raw);
+      const ingredients = extractIngredients(ingText || raw);
+      const steps = extractSteps(stepsText || raw);
+
+      outTitle.value = title;
+      outSource.value = source;
+      outIngredients.value = ingredients.map(x => `• ${x}`).join('\n');
+      outSteps.value = steps.map((x,i)=> `${i+1}. ${x}`).join('\n');
+      outServings.value = servings;
+
+      results.style.display = 'block';
+      statusEl.textContent = 'Done.';
+    } catch (err){
+      console.error(err);
+      errorEl.textContent = 'Could not clean this text. Try again or paste a different format.';
+      statusEl.textContent = '';
+    }
+  });
+})();
+</script>
+</body>
+</html>
