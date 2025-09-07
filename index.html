@@ -69,6 +69,23 @@
         <h3>Source</h3>
         <textarea id="outSource" class="readonly" readonly></textarea>
       </div>
+      <hr>
+<section id="cookbook" style="margin-top:24px">
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <h2 id="cookbookTitle" style="margin:0">Your Cookbook</h2>
+    <form id="nameForm" class="row" style="gap:8px;align-items:center">
+      <label for="ownerName" class="muted">Your name:</label>
+      <input id="ownerName" type="text" placeholder="e.g., Mo" style="max-width:220px">
+      <button type="submit">Update</button>
+    </form>
+  </div>
+  <div class="row" style="margin-top:10px;gap:10px">
+    <input id="search" type="text" placeholder="Search recipes…" style="flex:2">
+    <span id="count" class="muted" style="align-self:center"></span>
+  </div>
+  <div id="cookbookList" class="row" style="margin-top:12px;gap:12px"></div>
+</section>
+
     </div>
 
     <div class="row" style="margin-top:12px">
@@ -86,6 +103,8 @@
           <button type="button" data-copy="#outSteps">Copy steps</button>
         </div>
       </div>
+    #cookbookList .card{flex:1 1 260px}
+#cookbookList .card h4{margin:0 0 6px}
     </div>
 
     <div class="card" style="margin-top:12px">
@@ -96,7 +115,7 @@
     <div class="actions" style="margin-top:12px">
       <button id="copyAll" type="button">Copy everything</button>
       <button id="downloadTxt" type="button">Download .txt</button>
-      <!-- we’ll add Save-to-Dashboard in the next steps -->
+      <button id="saveRecipe" type="button">Save to Cookbook</button>
     </div>
 
     <div class="footer">
