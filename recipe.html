@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Recipe — allmyrecipes</title>
+<style>
+  :root { --radius:12px; }
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;max-width:980px;margin:40px auto;padding:0 16px;line-height:1.5}
+  a{color:#111}
+  nav{display:flex;gap:14px;align-items:center;margin-bottom:12px}
+  nav a{padding:6px 10px;border:1px solid #eee;border-radius:8px;text-decoration:none}
+  h1{margin:.25rem 0 .5rem}
+  .muted{color:#666}
+  .card{border:1px solid #eee;border-radius:12px;padding:12px;margin-top:12px}
+  textarea{width:100%;min-height:120px;border:1px solid #ddd;border-radius:12px;padding:10px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;background:#fafafa}
+  button{padding:10px 14px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer;margin-right:8px}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="cookbook.html">Your Cookbook</a>
+  </nav>
+
+  <h1 id="title">Recipe</h1>
+  <div class="muted" id="meta"></div>
+
+  <div class="card">
+    <h3>Ingredients</h3>
+    <textarea id="ing" readonly></textarea>
+  </div>
+
+  <div class="card">
+    <h3>Steps</h3>
+    <textarea id="steps" readonly></textarea>
+  </div>
+
+  <div class="card">
+    <h3>Servings</h3>
+    <textarea id="serv" readonly></textarea>
+  </div>
+
+  <div style="margin-top:12px">
+    <button id="save">Save to Cookbook</button>
+    <button id="download">Download .txt</button>
+  </div>
+
+<script>
+(function(){
+  const $ = (s)=>document.querySelector(s);
+
+  const STORE_KEY='amr_cb_v1';
+  function loadCookbook(){ try{return JSON.parse(localStorage.getItem(STORE_KEY)||'[]');}catch{return[];} }
+  function saveCookbook(a){ localStorage.setItem(STORE_KEY, JSON.stringify(a)); }
+
+  function buildTxt(r){
+    const ingredients=r.ingredients.map(x=>'• '+x).join('\n');
+    const steps=r.steps.map((x,i)=>(i+1)+'. '+x).join('\n');
+    let t=`Title: ${r.title}\n`; if(r.source) t+=`Source: ${r.source}\n`;
+    t+=`\nIngredients:\n${ingredients}\n\nSteps:\n${steps}`;
+    if(r.servings) t+=`\n\nServings: ${r.servings}`;
+    return t;
+  }
+
+  // get recipe: either from ?id=… (saved) or session "amr_tmp"
+  const params=new URLSearchParams(location.search);
+  const id=params.get('id');
+  let recipe=null;
+  if(id){
+    const items=loadCookbook();
+    recipe=items.find(r=>r.id===id)||null;
+  }else{
+    try{ recipe=JSON.parse(sessionStorage.getItem('amr_tmp')||'null'); }catch{}
+  }
+
+  if(!recipe){
+    document.body.innerHTML=`<nav>
+      <a href="index.html">Home</a>
+      <a href="cookbook.html">Your Cookbook</a>
+    </nav><p>Couldn’t find a recipe to show. <a href="index.html">Go back</a>.</p>`;
+    return;
+  }
+
+  // render
+  document.getElementById('title').textContent = recipe.title || 'Recipe';
+  const source = recipe.source ? `<a href="${recipe.source}" target="_blank" rel="noopener">source</a> • ` : '';
+  document.getElementById('meta').innerHTML = `${source}${new Date(recipe.createdAt||Date.now()).toLocaleString()}`;
+  document.getElementById('ing').value   = recipe.ingredients.map(x=>'• '+x).join('\n');
+  document.getElementById('steps').value = recipe.steps.map((x,i)=>`${i+1}. ${x}`).join('\n');
+  document.getElementById('serv').value  = recipe.servings || '';
+
+  // save
+  document.getElementById('save').addEventListener('click', ()=>{
+    const items=loadCookbook();
+    const existingIdx = items.findIndex(x=>x.title.toLowerCase()===recipe.title.toLowerCase());
+    if(existingIdx>=0){
+      if(!confirm(`"${recipe.title}" already exists. Overwrite?`)) return;
+      recipe.id = items[existingIdx].id;
+      items[existingIdx]=recipe;
+    }else{
+      recipe.id='r_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+      items.unshift(recipe);
+    }
+    saveCookbook(items);
+    alert('Saved to Your Cookbook.');
+  });
+
+  // download
+  document.getElementById('download').addEventListener('click', ()=>{
+    const blob=new Blob([buildTxt(recipe)],{type:'text/plain'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const safe=(recipe.title||'recipe').replace(/[^\w\-]+/g,'_').slice(0,60);
+    a.href=url; a.download=`${safe}.txt`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  });
+})();
+</script>
+</body>
+</html>
