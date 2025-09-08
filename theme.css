@@ -1,26 +1,23 @@
-/* Light–pink site + THICK colorful doodle frame on every page */
+/* Light-pink site + thick, colorful doodle frame (with solid fallback) */
 :root{
   --bg: #ffeef3;
-  --frame: 72px;          /* ~2.5x thicker. Tweak to taste */
+  --frame: 72px;           /* thickness of the frame; change to taste */
 }
 
 html, body { height: 100%; }
+body { background: var(--bg); margin: 0; min-height: 100dvh; }
 
-/* Pink background */
-body{
-  background: var(--bg);
-  min-height: 100dvh;
-  margin: 0;
-}
-
-/* Paint the illustrated border as a fixed overlay so it always shows */
+/* Draw the frame as a fixed overlay so it always shows */
 html::before{
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 9999;
+  box-sizing: border-box;
 
-  /* the “border” */
-  border: var(--frame) solid transparent;
-  border-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' fill='none'/%3E%3Cg stroke-linecap='round' stroke-linejoin='round'%3E%3C!-- tomatoes --%3E%3Cg fill='%23ff6b6b' stroke='%23e14848' stroke-width='3'%3E%3Ccircle cx='12' cy='18' r='8'/%3E%3Ccircle cx='30' cy='8' r='6'/%3E%3Ccircle cx='108' cy='14' r='9'/%3E%3Ccircle cx='110' cy='106' r='8'/%3E%3Ccircle cx='12' cy='104' r='9'/%3E%3C/g%3E%3C!-- lemons --%3E%3Cg fill='%23ffe24d' stroke='%23ffb703' stroke-width='3'%3E%3Cellipse cx='60' cy='8' rx='14' ry='9'/%3E%3Cellipse cx='8' cy='60' rx='10' ry='7'/%3E%3Cellipse cx='112' cy='60' rx='10' ry='7'/%3E%3Cellipse cx='60' cy='112' rx='14' ry='9'/
+  /* 1) Solid fallback border (shows even if the doodle image/mask fails) */
+  border: var(--frame) solid #ffc8d8;
+
+  /* 2) Doodle tile background (very dense) */
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Crect width='160' height='160' fill='none'/%3E%3Cg stroke-linecap='round' stroke-linejoin='round'%3E%3C!-- tomatoes --%3E%3Cg fill='%23ff6b6b' stroke='%23e14848' stroke-width='3'%3E%3Ccircle cx=
