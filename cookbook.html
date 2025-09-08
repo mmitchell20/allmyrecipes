@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Your Cookbook — allmyrecipes</title>
+<style>
+  :root { --radius:12px; }
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;max-width:980px;margin:40px auto;padding:0 16px;line-height:1.5}
+  a{color:#111}
+  nav{display:flex;gap:14px;align-items:center;margin-bottom:12px}
+  nav a{padding:6px 10px;border:1px solid #eee;border-radius:8px;text-decoration:none}
+  h1{margin:.25rem 0 .5rem}
+  .muted{color:#666}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .card{border:1px solid #eee;border-radius:12px;padding:12px;flex:1 1 260px}
+  button{padding:8px 12px;border:0;border-radius:10px;background:#111;color:#fff;cursor:pointer;margin-right:6px}
+  input[type=text]{padding:10px;border:1px solid #ccc;border-radius:12px}
+</style>
+</head>
+<body>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="cookbook.html">Your Cookbook</a>
+  </nav>
+
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <h1 id="title">Your Cookbook</h1>
+    <form id="nameForm" class="row" style="gap:8px;align-items:center">
+      <label for="ownerName" class="muted">Your name:</label>
+      <input id="ownerName" type="text" placeholder="e.g., Mo" style="max-width:220px">
+      <button type="submit">Update</button>
+    </form>
+  </div>
+
+  <div class="row" style="margin-top:10px;gap:10px">
+    <input id="search" type="text" placeholder="Search recipes…" style="flex:2">
+    <span id="count" class="muted" style="align-self:center"></span>
+  </div>
+
+  <div id="list" class="row" style="margin-top:12px;gap:12px"></div>
+
+<script>
+(function(){
+  const STORE_KEY='amr_cb_v1', NAME_KEY='amr_name';
+  const $=(s)=>document.querySelector(s);
+
+  function load(){ try{return JSON.parse(localStorage.getItem(STORE_KEY)||'[]');}catch{return[];} }
+  function save(a){ localStorage.setItem(STORE_KEY, JSON.stringify(a)); }
+  function getName(){ return (localStorage.getItem(NAME_KEY)||'').trim(); }
+  function setName(n){ localStorage.setItem(NAME_KEY, (n||'').trim()); }
+  function possessive(n){ if(!n) return 'Your Cookbook'; return /s$/i.test(n)?`${n}' Cookbook`:`${n}'s Cookbook`; }
+
+  const titleEl=$('#title'), nameForm=$('#nameForm'), ownerEl=$('#ownerName'), searchEl=$('#search'), listEl=$('#list'), countEl=$('#count');
+
+  function render(filter=''){
+    titleEl.textContent = possessive(getName());
+    ownerEl.value = getName();
+
+    const items=load();
+    const q=(filter||'').toLowerCase();
+    const filtered=q?items.filter(r=>r.title.toLowerCase().includes(q)||r.ingredients.join(' ').toLowerCase().includes(q)||(r.servings||'').toLowerCase().includes(q)):items;
+
+    countEl.textContent = filtered.length ? `${filtered.length} saved` : 'No recipes saved yet';
+    listEl.innerHTML = filtered.map(r=>{
+      const created=new Date(r.createdAt||Date.now()).toLocaleDateString();
+      const source=r.source?` • <a href="${r.source}" target="_blank" rel="noopener">source</a>`:'';
+      const sv=r.servings?` • Servings: ${r.servings}`:'';
+      return `<div class="card">
+        <h3>${r.title}</h3>
+        <div class="muted" style="margin-bottom:8px">${created}${sv}${source}</div>
+        <div>
+          <a href="recipe.html?id=${encodeURIComponent(r.id)}"><button>Open</button></a>
+          <button data-del="${r.id}">Delete</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  nameForm.addEventListener('submit',(e)=>{e.preventDefault(); setName(ownerEl.value||''); render(searchEl.value);});
+  searchEl.addEventListener('input',()=>render(searchEl.value));
+  listEl.addEventListener('click',(e)=>{
+    const id=e.target.getAttribute('data-del'); if(!id) return;
+    if(!confirm('Delete this recipe?')) return;
+    const next=load().filter(r=>r.id!==id); save(next); render(searchEl.value);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
