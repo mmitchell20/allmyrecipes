@@ -6,598 +6,138 @@
 <title>allmyrecipes — Paste Cleaner</title>
 <style>
   :root { --radius:12px; }
-
-  body{
-    font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
-    max-width:980px;margin:40px auto;padding:0 16px;line-height:1.5
-  }
-  h1{font-size:1.8rem;margin:0 0 .5rem}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;max-width:980px;margin:40px auto;padding:0 16px;line-height:1.5}
+  a{color:#111}
+  nav{display:flex;gap:14px;align-items:center;margin-bottom:12px}
+  nav a{padding:6px 10px;border:1px solid #eee;border-radius:8px;text-decoration:none}
+  h1{font-size:1.8rem;margin:.25rem 0 .5rem}
   .muted{color:#666}
-  .note{
-    background:#fffbe6;border:1px solid #f0e6a0;border-radius:var(--radius);
-    padding:10px;margin:10px 0 18px
-  }
-
+  .note{background:#fffbe6;border:1px solid #f0e6a0;border-radius:12px;padding:10px;margin:10px 0 18px}
   form{display:grid;gap:12px;margin:16px 0}
   label{font-weight:600}
-  input[type=text], input[type=url], textarea{
-    width:100%;padding:10px;border:1px solid #ccc;border-radius:var(--radius);font:inherit
-  }
-  textarea{
-    min-height:200px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace
-  }
-  button{
-    padding:10px 14px;border:0;border-radius:var(--radius);background:#111;color:#fff;cursor:pointer
-  }
-  button[disabled]{opacity:.6;cursor:not-allowed}
-
-  .row{display:flex;gap:10px;flex-wrap:wrap}
-  .col{flex:1 1 300px}
-
-  .card{border:1px solid #eee;border-radius:var(--radius);padding:12px}
-  .card h3{margin:0 0 8px}
-  .card h4{margin:0 0 6px}
-
-  textarea.readonly{background:#fafafa}
-  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  input[type=text], input[type=url], textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:12px;font:inherit}
+  textarea{min-height:220px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace}
+  button{padding:10px 14px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer}
   .error{color:#b00020;font-weight:600}
-  .success{color:#0a7d2d;font-weight:600}
-  .footer{color:#666;margin-top:18px;font-size:.95rem}
-
-  /* Cookbook layout */
-  #cookbook{scroll-margin-top:24px}
-  #cookbookList{display:flex;flex-wrap:wrap;gap:12px}
-  #cookbookList .card{flex:1 1 260px}
-  #cookbookList .card h4{margin:0 0 6px}
 </style>
 </head>
 <body>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="cookbook.html">Your Cookbook</a>
+  </nav>
+
   <h1>allmyrecipes</h1>
-  <p class="muted">Paste any messy recipe text and get clean <em>Ingredients</em> + <em>Steps</em>. No scraping.</p>
+  <p class="muted">Paste any messy recipe text and we’ll clean it into Ingredients + Steps. No scraping.</p>
   <div class="note"><strong>Heads up:</strong> Use this for <em>personal</em> use. Don’t republish extracted content.</div>
 
-  <!-- FORM -->
   <form id="cleaner">
     <div>
       <label for="title">What are we making today?</label>
       <input id="title" type="text" placeholder="e.g., Lemon Garlic Pasta" required />
     </div>
-
     <div>
       <label for="source">Where'd you find the recipe? (original link)</label>
       <input id="source" type="url" placeholder="https://example.com/the-recipe" />
     </div>
-
     <div>
       <label for="raw">Ok, paste all the text you have and let's clean this up and get cooking!</label>
       <textarea id="raw" placeholder="Paste the whole recipe text here…" required></textarea>
     </div>
-
-    <div class="row">
-      <button id="cleanBtn" type="submit">Clean it up</button>
-      <button id="clearBtn" type="button">Clear</button>
+    <div>
+      <button type="submit">Clean it up</button>
+      <span id="status" class="muted" style="margin-left:10px"></span>
     </div>
-
-    <div id="status" class="muted"></div>
     <div id="error" class="error" role="alert"></div>
   </form>
 
-  <!-- RESULTS -->
-  <div id="results" style="display:none">
-    <div class="row">
-      <div class="col card">
-        <h3>Title</h3>
-        <textarea id="outTitle" class="readonly" readonly></textarea>
-      </div>
-      <div class="col card">
-        <h3>Source</h3>
-        <textarea id="outSource" class="readonly" readonly></textarea>
-      </div>
-    </div>
-
-    <div class="row" style="margin-top:12px">
-      <div class="col card">
-        <h3>Ingredients</h3>
-        <textarea id="outIngredients" class="readonly" readonly></textarea>
-        <div class="actions" style="margin-top:8px">
-          <button type="button" data-copy="#outIngredients">Copy ingredients</button>
-        </div>
-      </div>
-      <div class="col card">
-        <h3>Steps</h3>
-        <textarea id="outSteps" class="readonly" readonly></textarea>
-        <div class="actions" style="margin-top:8px">
-          <button type="button" data-copy="#outSteps">Copy steps</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <h3>Servings</h3>
-      <textarea id="outServings" class="readonly" readonly></textarea>
-    </div>
-
-    <div class="actions" style="margin-top:12px">
-      <button id="copyAll" type="button">Copy everything</button>
-      <button id="downloadTxt" type="button">Download .txt</button>
-      <button id="saveRecipe" type="button">Save to Cookbook</button>
-    </div>
-
-    <div class="footer">
-      Tip: You can tweak anything above, then copy/download again.
-    </div>
-  </div>
-
-  <hr>
-
-  <!-- COOKBOOK -->
-  <section id="cookbook" style="margin-top:24px">
-    <div class="row" style="justify-content:space-between;align-items:center">
-      <h2 id="cookbookTitle" style="margin:0">Your Cookbook</h2>
-      <form id="nameForm" class="row" style="gap:8px;align-items:center">
-        <label for="ownerName" class="muted">Your name:</label>
-        <input id="ownerName" type="text" placeholder="e.g., Mo" style="max-width:220px">
-        <button type="submit">Update</button>
-      </form>
-    </div>
-
-    <div class="row" style="margin-top:10px;gap:10px">
-      <input id="search" type="text" placeholder="Search recipes…" style="flex:2">
-      <span id="count" class="muted" style="align-self:center"></span>
-    </div>
-
-    <div id="cookbookList" class="row" style="margin-top:12px;gap:12px"></div>
-  </section>
-
 <script>
 (function(){
-  const $ = (sel) => document.querySelector(sel);
-
-  const form = $('#cleaner');
-  const titleEl = $('#title');
-  const sourceEl = $('#source');
-  const rawEl = $('#raw');
-  const statusEl = $('#status');
-  const errorEl = $('#error');
-  const results = $('#results');
-  const outTitle = $('#outTitle');
-  const outSource = $('#outSource');
-  const outIngredients = $('#outIngredients');
-  const outSteps = $('#outSteps');
-  const outServings = $('#outServings');
-
-  // --- small helpers ---
-  function copyText(el) {
-    navigator.clipboard.writeText(typeof el === 'string' ? el : el.value).then(() => {
-      statusEl.textContent = 'Copied!';
-      setTimeout(()=> statusEl.textContent = '', 900);
-    }).catch(()=> alert('Copy failed — select and copy manually.'));
-  }
-
-  function download(filename, text) {
-    const blob = new Blob([text], {type:'text/plain'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  // Normalize bullets and whitespace
-  function normalize(text) {
-    return text
-      .replace(/\r\n/g, '\n')
-      .replace(/[\u2022\u25CF\u25A0\u2219]/g, '*') // bullets -> *
-      .replace(/\t/g, ' ')
-      .replace(/\u00A0/g, ' ')
-      .replace(/[ ]{2,}/g, ' ')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
-  }
-
-  // Detect likely "ingredients" lines
-  const UNIT_RE = new RegExp(String.raw`\b(?:cup|cups|c|tablespoon|tablespoons|tbsp|tbs|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|milliliter|milliliters|ml|liter|liters|l|pinch|dash|clove|cloves|stick|sticks|slice|slices|can|cans|package|packages|pkt|pint|pints|quart|quarts|qt|qts)\b`, 'i');
+  // --- helpers identical to your working single-page version ---
+  const $ = (s)=>document.querySelector(s);
+  const statusEl = $('#status'), errorEl = $('#error');
+  const UNIT_RE = new RegExp(String.raw`\b(?:cup|cups|c|tablespoon|tablespoons|tbsp|tbs|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|kilogram|kilograms|kg|milliliter|milliliters|ml|liter|liters|l|pinch|dash|clove|cloves|stick|sticks|slice|slices|can|cans|package|packages|pkt|pint|pints|quart|quarts|qt|qts)\b`,'i');
   const QTY_RE = /(^|\s)(\d+([\/.-]\d+)?|\d+\s+\d\/\d|¼|½|¾|⅓|⅔|⅛|⅜|⅝|⅞)/;
   const BULLET_RE = /^\s*(?:[-*•]|[\d]+[.)])\s+/;
 
-  function isIngredientLine(line){
-    const l = line.trim();
-    if (!l) return false;
-    if (/^(ingredients?)\s*[:\-]/i.test(l)) return false; // header
-    return BULLET_RE.test(l) || (QTY_RE.test(l) && UNIT_RE.test(l));
-  }
-
-  function cleanIngredient(line){
-    let s = line.trim()
-      .replace(BULLET_RE, '')
-      .replace(/\s*,\s*/g, ', ')
-      .replace(/\s{2,}/g, ' ')
-      .replace(/\s*\.\s*$/, '');
-    s = s.replace(/\b(tsp)\.\b/ig, 'tsp')
-         .replace(/\b(tbsp)\.\b/ig, 'tbsp')
-         .replace(/\b(oz)\.\b/ig, 'oz');
-    return s;
-  }
-
-  // Servings / yield detection (strict: Servings/Serves/Makes at line start)
+  function normalize(t){return t.replace(/\r\n/g,'\n').replace(/[\u2022\u25CF\u25A0\u2219]/g,'*').replace(/\t/g,' ').replace(/\u00A0/g,' ').replace(/[ ]{2,}/g,' ').replace(/\n{3,}/g,'\n\n').trim();}
+  function isIngredientLine(l){l=l.trim(); if(!l) return false; if(/^(ingredients?)\s*[:\-]/i.test(l)) return false; return BULLET_RE.test(l)||(QTY_RE.test(l)&&UNIT_RE.test(l));}
+  function cleanIngredient(l){return l.trim().replace(BULLET_RE,'').replace(/\s*,\s*/g,', ').replace(/\s{2,}/g,' ').replace(/\s*\.\s*$/,'').replace(/\b(tsp)\.\b/ig,'tsp').replace(/\b(tbsp)\.\b/ig,'tbsp').replace(/\b(oz)\.\b/ig,'oz');}
   function detectServings(text){
-    const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
-    const isStepLine = (l) => /^\d+\s*[.)]\s+/.test(l) || /^[*•-]\s+/.test(l);
-
-    const scan = (arr) => {
-      for (const line of arr) {
-        if (isStepLine(line)) continue;
-        const L = line.replace(/\s+/g, ' ');
-        let m;
-        m = L.match(/^\s*servings\b\s*[:\-]?\s*(.+)$/i);
-        if (m && m[1]) return m[1].trim();
-        m = L.match(/^\s*serves\b\s*[:\-]?\s*(.+)$/i);
-        if (m && m[1]) return m[1].trim();
-        m = L.match(/^\s*makes\b\s*[:\-]?\s*(.+)$/i);
-        if (m && m[1]) return m[1].trim();
-      }
-      return '';
-    };
-    return scan(lines.slice(0, 50)) || scan(lines.slice(-50));
+    const lines=text.split('\n').map(s=>s.trim()).filter(Boolean);
+    const isStep=(l)=>/^\d+\s*[.)]\s+/.test(l)||/^[*•-]\s+/.test(l);
+    const scan=(arr)=>{for(const line of arr){if(isStep(line))continue;const L=line.replace(/\s+/g,' ');let m;
+      m=L.match(/^\s*servings\b\s*[:\-]?\s*(.+)$/i); if(m&&m[1]) return m[1].trim();
+      m=L.match(/^\s*serves\b\s*[:\-]?\s*(.+)$/i);   if(m&&m[1]) return m[1].trim();
+      m=L.match(/^\s*makes\b\s*[:\-]?\s*(.+)$/i);    if(m&&m[1]) return m[1].trim();
+    } return '';};
+    return scan(lines.slice(0,50))||scan(lines.slice(-50));
   }
-
   function splitSections(text){
-    const lower = text.toLowerCase();
-    const idxIng = lower.search(/\bingredients?\b/);
-       const idxSteps = lower.search(/\b(instructions?|directions?|method|preparation|steps?)\b/);
-    if (idxIng !== -1 && idxSteps !== -1) {
-      const ingText = text.slice(idxIng, idxSteps);
-      const stepsText = text.slice(idxSteps);
-      return { ingText, stepsText };
-    }
-    return { ingText: '', stepsText: '' };
+    const lower=text.toLowerCase();
+    const i1=lower.search(/\bingredients?\b/);
+    const i2=lower.search(/\b(instructions?|directions?|method|preparation|steps?)\b/);
+    if(i1!==-1&&i2!==-1){return{ingText:text.slice(i1,i2),stepsText:text.slice(i2)};}
+    return{ingText:'',stepsText:''};
   }
-
-  // -------- smarter step splitting helpers --------
-  function splitSentences(text){
-    const ABBR = ['min','mins','sec','secs','tsp','tbsp','oz','approx','pkg','pt','qt','vs','mr','mrs','dr'];
-    const out = [];
-    let buf = '';
-    const isEOS = (prevChar, nextChar, prevWord) => {
-      if (/\d/.test(prevChar) && /\d/.test(nextChar)) return false; // don't split 1.5
-      if (prevWord && ABBR.includes(prevWord.toLowerCase())) return false; // don't split "min."
-      return /[A-Z0-9]/.test(nextChar || 'A');
-    };
-
-    for (let i = 0; i < text.length; i++){
-      const ch = text[i];
-      buf += ch;
-      if (/[.!?]/.test(ch)){
-        let j = i+1; while (j < text.length && /\s/.test(text[j])) j++;
-        let k = i-1; while (k >= 0 && text[k] === ' ') k--;
-        let wEnd = k; while (k >= 0 && /[A-Za-z]/.test(text[k])) k--;
-        const prevWord = text.slice(k+1, wEnd+1);
-        const prevChar = text[i-1] || '';
-        const nextChar = text[j] || '';
-        if (isEOS(prevChar, nextChar, prevWord)) {
-          out.push(buf.trim());
-          buf = '';
-          i = j-1;
-        }
-      }
-    }
-    if (buf.trim()) out.push(buf.trim());
-    return out;
+  function splitSentences(t){
+    const ABBR=['min','mins','sec','secs','tsp','tbsp','oz','approx','pkg','pt','qt','vs','mr','mrs','dr']; const out=[]; let buf='';
+    const isEOS=(p,n,w)=>{if(/\d/.test(p)&&/\d/.test(n))return false; if(w&&ABBR.includes(w.toLowerCase()))return false; return /[A-Z0-9]/.test(n||'A');};
+    for(let i=0;i<t.length;i++){const ch=t[i]; buf+=ch; if(/[.!?]/.test(ch)){let j=i+1; while(j<t.length&&/\s/.test(t[j])) j++; let k=i-1; while(k>=0&&t[k]===' ') k--; let we=k; while(k>=0&&/[A-Za-z]/.test(t[k])) k--; const prev=t.slice(k+1,we+1); if(isEOS(t[i-1]||'',t[j]||'',prev)){out.push(buf.trim()); buf=''; i=j-1;}}}
+    if(buf.trim()) out.push(buf.trim()); return out;
   }
-
-  function chunkLongStep(s){
-    const MAX = 220; // adjust down if you want shorter steps
-    if (s.length <= MAX) return [s.trim()];
-    let parts = s.split(/;|\.\s+(?=(?:Then|Next|Meanwhile|After|Before|Once|When|Return|Stir|Add|Bake|Cook|Transfer|Let|Serve|Season|Reduce|Increase|Whisk|Simmer|Boil|Drain)\b)/gi)
-                 .map(t=>t.trim()).filter(Boolean);
-    if (parts.length === 1 && parts[0].length > MAX){
-      parts = s.split(/\s+(?:and\s+then|then)\s+/gi).map(t=>t.trim()).filter(Boolean);
-    }
-    if (parts.some(p => p.length > MAX)){
-      parts = splitSentences(s);
-    }
-    return parts.map(t => t.replace(/\s*\.\s*$/,''));
+  function chunkLongStep(s){const MAX=220; if(s.length<=MAX) return [s.trim()];
+    let parts=s.split(/;|\.\s+(?=(?:Then|Next|Meanwhile|After|Before|Once|When|Return|Stir|Add|Bake|Cook|Transfer|Let|Serve|Season|Reduce|Increase|Whisk|Simmer|Boil|Drain)\b)/gi).map(t=>t.trim()).filter(Boolean);
+    if(parts.length===1&&parts[0].length>MAX){parts=s.split(/\s+(?:and\s+then|then)\s+/gi).map(t=>t.trim()).filter(Boolean);}
+    if(parts.some(p=>p.length>MAX)){parts=splitSentences(s);}
+    return parts.map(t=>t.replace(/\s*\.\s*$/,''));
   }
-
   function extractIngredients(text){
-    const lines = text.split('\n');
-    let ing = [];
-    for (const line of lines) if (isIngredientLine(line)) ing.push(cleanIngredient(line));
-    if (ing.length < 2) {
-      ing = text.split('\n').filter(isIngredientLine).map(cleanIngredient);
-    }
-    const seen = new Set(); const out = [];
-    for (const x of ing) { const k = x.toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(x); } }
-    return out;
+    let ing=[]; for(const line of text.split('\n')) if(isIngredientLine(line)) ing.push(cleanIngredient(line));
+    if(ing.length<2) ing=text.split('\n').filter(isIngredientLine).map(cleanIngredient);
+    const seen=new Set(), out=[]; for(const x of ing){const k=x.toLowerCase(); if(!seen.has(k)){seen.add(k); out.push(x);}} return out;
   }
-
   function extractSteps(text){
-    let body = text;
-    const m = text.match(/(?:instructions?|directions?|method|preparation|steps?)\s*[:\-]?\s*/i);
-    if (m) body = text.slice(text.toLowerCase().indexOf(m[0].toLowerCase()) + m[0].length);
-
-    body = body
-      .replace(/(?:^|\s)(\d{1,2}[.)])\s+/g, '\n$1 ')
-      .replace(/[\u2022\u25CF\u25A0\u2219]/g, '\n• ')
-      .replace(/\r\n/g, '\n');
-
-    const lines = body.split('\n').map(s => s.trim()).filter(Boolean);
-
-    const steps = [];
-    let cur = '';
-    const startsStep = (l) => /^\d{1,3}\s*[.)]\s+/.test(l) || /^[*•-]\s+/.test(l) || /^step\s*\d+/i.test(l);
-    for (const l of lines){
-      if (startsStep(l)) {
-        if (cur.trim()) steps.push(cur.trim());
-        cur = l.replace(/^\d{1,3}\s*[.)]\s+|^[*•-]\s+|^step\s*\d+\s*[:.)-]?\s*/i,'').trim();
-      } else {
-        cur += (cur ? ' ' : '') + l;
-      }
-    }
-    if (cur.trim()) steps.push(cur.trim());
-
-    let out = steps.length >= 3 ? steps : splitSentences(body);
-
-    out = out
-      .map(s => s.replace(/^\d+\s*[.)]\s+/, '').trim())
-      .filter(s => s.length > 2);
-
-    const merged = [];
-    for (const s of out){
-      const words = s.split(/\s+/).length;
-      if (merged.length && words < 4){
-        merged[merged.length-1] = (merged[merged.length-1] + ' ' + s).replace(/\s+/g,' ').trim();
-      } else {
-        merged.push(s);
-      }
-    }
-
-    const final = [];
-    for (const s of merged) final.push(...chunkLongStep(s));
-
-    return final.map(x => x.replace(/\s*\.\s*$/,'')).filter(Boolean);
+    let body=text; const m=text.match(/(?:instructions?|directions?|method|preparation|steps?)\s*[:\-]?\s*/i);
+    if(m) body=text.slice(text.toLowerCase().indexOf(m[0].toLowerCase())+m[0].length);
+    body=body.replace(/(?:^|\s)(\d{1,2}[.)])\s+/g,'\n$1 ').replace(/[\u2022\u25CF\u25A0\u2219]/g,'\n• ').replace(/\r\n/g,'\n');
+    const lines=body.split('\n').map(s=>s.trim()).filter(Boolean);
+    const steps=[]; let cur=''; const starts=(l)=>/^\d{1,3}\s*[.)]\s+/.test(l)||/^[*•-]\s+/.test(l)||/^step\s*\d+/i.test(l);
+    for(const l of lines){ if(starts(l)){ if(cur.trim()) steps.push(cur.trim()); cur=l.replace(/^\d{1,3}\s*[.)]\s+|^[*•-]\s+|^step\s*\d+\s*[:.)-]?\s*/i,'').trim(); } else { cur+=(cur?' ':'')+l; } }
+    if(cur.trim()) steps.push(cur.trim());
+    let out=steps.length>=3?steps:splitSentences(body);
+    out=out.map(s=>s.replace(/^\d+\s*[.)]\s+/,'').trim()).filter(s=>s.length>2);
+    const merged=[]; for(const s of out){const w=s.split(/\s+/).length; if(merged.length&&w<4){merged[merged.length-1]=(merged[merged.length-1]+' '+s).replace(/\s+/g,' ').trim();} else merged.push(s);}
+    const final=[]; for(const s of merged) final.push(...chunkLongStep(s));
+    return final.map(x=>x.replace(/\s*\.\s*$/,'')).filter(Boolean);
   }
 
-  function buildTxt(title, source, ingredients, steps, servings){
-    let t = `Title: ${title}\n`;
-    if (source) t += `Source: ${source}\n`;
-    t += '\nIngredients:\n';
-    t += ingredients.map(x => `• ${x}`).join('\n') + '\n\n';
-    t += 'Steps:\n';
-    t += steps.map((x,i) => `${i+1}. ${x}`).join('\n');
-    if (servings) t += `\n\nServings: ${servings}`;
-    return t;
-  }
-
-  // --- copy / download buttons ---
-  document.addEventListener('click', (e)=>{
-    const sel = e.target?.getAttribute('data-copy');
-    if (!sel) return;
-    const el = document.querySelector(sel);
-    if (el) copyText(el);
-  });
-
-  document.getElementById('copyAll').addEventListener('click', ()=>{
-    const txt = buildTxt(
-      outTitle.value,
-      outSource.value,
-      outIngredients.value.split('\n').filter(Boolean).map(s=>s.replace(/^•\s*/,'')),
-      outSteps.value.split('\n').filter(Boolean).map(s=>s.replace(/^\d+\.\s*/,'')),
-      outServings.value.trim()
-    );
-    copyText(txt);
-  });
-
-  document.getElementById('downloadTxt').addEventListener('click', ()=>{
-    const txt = buildTxt(
-      outTitle.value,
-      outSource.value,
-      outIngredients.value.split('\n').filter(Boolean).map(s=>s.replace(/^•\s*/,'')),
-      outSteps.value.split('\n').filter(Boolean).map(s=>s.replace(/^\d+\.\s*/,'')),
-      outServings.value.trim()
-    );
-    const safeName = (outTitle.value || 'recipe').replace(/[^\w\-]+/g,'_').slice(0,60);
-    download(`${safeName}.txt`, txt);
-  });
-
-  document.getElementById('clearBtn').addEventListener('click', ()=>{
-    form.reset();
-    results.style.display = 'none';
-    statusEl.textContent = '';
-    errorEl.textContent = '';
-  });
-
-  // --- clean action ---
-  form.addEventListener('submit', (e)=>{
-    e.preventDefault();
-    errorEl.textContent = '';
-    statusEl.textContent = 'Cleaning…';
-
-    const title = titleEl.value.trim();
-    const source = sourceEl.value.trim();
-    const raw = normalize(rawEl.value);
-
-    try {
-      const servings = detectServings(raw);
-      const { ingText, stepsText } = splitSections(raw);
-      const ingredients = extractIngredients(ingText || raw);
-      const steps = extractSteps(stepsText || raw);
-
-      outTitle.value = title;
-      outSource.value = source;
-      outIngredients.value = ingredients.map(x => `• ${x}`).join('\n');
-      outSteps.value = steps.map((x,i)=> `${i+1}. ${x}`).join('\n');
-      outServings.value = servings;
-
-      results.style.display = 'block';
-      results.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      statusEl.textContent = 'Done.';
-    } catch (err){
+  // submit → clean → store → go to recipe.html
+  $('#cleaner').addEventListener('submit', (e)=>{
+    e.preventDefault(); errorEl.textContent=''; statusEl.textContent='Cleaning…';
+    try{
+      const title = $('#title').value.trim();
+      const source= $('#source').value.trim();
+      const raw   = normalize($('#raw').value);
+      const {ingText,stepsText} = splitSections(raw);
+      const recipe = {
+        id: 'tmp_'+Date.now(),
+        title,
+        source,
+        ingredients: extractIngredients(ingText || raw),
+        steps: extractSteps(stepsText || raw),
+        servings: detectServings(raw),
+        createdAt: new Date().toISOString()
+      };
+      sessionStorage.setItem('amr_tmp', JSON.stringify(recipe));
+      statusEl.textContent='Done. Opening recipe…';
+      window.location.href = 'recipe.html';
+    }catch(err){
       console.error(err);
-      errorEl.textContent = 'Could not clean this text. Try again or paste a different format.';
-      statusEl.textContent = '';
+      statusEl.textContent='';
+      errorEl.textContent='Could not clean this text. Try a different format.';
     }
   });
-
-  // =========================
-  // Cookbook storage + UI
-  // =========================
-  const STORE_KEY = 'amr_cb_v1';
-  const NAME_KEY  = 'amr_name';
-
-  const cookbookTitle = document.getElementById('cookbookTitle');
-  const ownerNameEl   = document.getElementById('ownerName');
-  const nameForm      = document.getElementById('nameForm');
-  const searchEl      = document.getElementById('search');
-  const listEl        = document.getElementById('cookbookList');
-  const countEl       = document.getElementById('count');
-  const saveBtn       = document.getElementById('saveRecipe');
-
-  function loadCookbook(){
-    try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); }
-    catch { return []; }
-  }
-  function saveCookbook(arr){ localStorage.setItem(STORE_KEY, JSON.stringify(arr)); }
-  function getName(){ return (localStorage.getItem(NAME_KEY) || '').trim(); }
-  function setName(n){ localStorage.setItem(NAME_KEY, n.trim()); }
-  function possessive(name){
-    if (!name) return 'Your Cookbook';
-    const endsWithS = /s$/i.test(name);
-    return `${name}${endsWithS ? '\'' : '\'s'} Cookbook`;
-  }
-
-  function buildTxtFromRecipe(r){
-    const ingredients = r.ingredients.map(x => `• ${x}`).join('\n');
-    const steps = r.steps.map((x,i) => `${i+1}. ${x}`).join('\n');
-    let t = `Title: ${r.title}\n`;
-    if (r.source) t += `Source: ${r.source}\n`;
-    t += `\nIngredients:\n${ingredients}\n\nSteps:\n${steps}`;
-    if (r.servings) t += `\n\nServings: ${r.servings}`;
-    return t;
-  }
-
-  function renderCookbook(filter=''){
-    const name = getName();
-    cookbookTitle.textContent = possessive(name);
-    ownerNameEl.value = name;
-
-    const items = loadCookbook();
-    const q = (filter || '').trim().toLowerCase();
-    const filtered = q
-      ? items.filter(r =>
-          r.title.toLowerCase().includes(q) ||
-          r.ingredients.join(' ').toLowerCase().includes(q) ||
-          (r.servings||'').toLowerCase().includes(q)
-        )
-      : items;
-
-    countEl.textContent = filtered.length ? `${filtered.length} saved` : 'No recipes saved yet';
-
-    listEl.innerHTML = filtered.map(r => {
-      const created = new Date(r.createdAt || Date.now()).toLocaleDateString();
-      const source = r.source ? `<a href="${r.source}" target="_blank" rel="noopener noreferrer">source</a>` : '';
-      const sv = r.servings ? ` • Servings: ${r.servings}` : '';
-      return `
-        <div class="card">
-          <h4>${r.title}</h4>
-          <div class="muted" style="margin-bottom:8px">${created}${sv}${source ? ' • ' + source : ''}</div>
-          <div class="actions">
-            <button type="button" data-open="${r.id}">Open</button>
-            <button type="button" data-export="${r.id}">Download .txt</button>
-            <button type="button" data-delete="${r.id}">Delete</button>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function getOutputsAsRecipe(){
-    const title = outTitle.value.trim();
-    if (!title) { alert('Please clean first and ensure a Title.'); return null; }
-    const source = outSource.value.trim();
-    const ingredients = outIngredients.value.split('\n')
-      .map(s => s.replace(/^•\s*/, '').trim()).filter(Boolean);
-    const steps = outSteps.value.split('\n')
-      .map(s => s.replace(/^\d+\.\s*/, '').trim()).filter(Boolean);
-    const servings = outServings.value.trim();
-    return {
-      id: 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-      title, source, ingredients, steps, servings,
-      createdAt: new Date().toISOString()
-    };
-  }
-
-  // Save current cleaned recipe
-  saveBtn.addEventListener('click', ()=>{
-    const rec = getOutputsAsRecipe();
-    if (!rec) return;
-    const items = loadCookbook();
-    const existingIdx = items.findIndex(x => x.title.toLowerCase() === rec.title.toLowerCase());
-    if (existingIdx >= 0) {
-      if (!confirm(`"${rec.title}" already exists. Overwrite?`)) return;
-      rec.id = items[existingIdx].id; // keep id
-      items[existingIdx] = rec;
-    } else {
-      items.unshift(rec);
-    }
-    saveCookbook(items);
-    renderCookbook(searchEl.value);
-    statusEl.textContent = 'Saved to your cookbook.';
-    setTimeout(()=> statusEl.textContent = '', 1200);
-  });
-
-  // Name personalization
-  nameForm.addEventListener('submit', (e)=>{
-    e.preventDefault();
-    setName(ownerNameEl.value || '');
-    renderCookbook(searchEl.value);
-  });
-
-  // Search
-  searchEl.addEventListener('input', ()=>{
-    renderCookbook(searchEl.value);
-  });
-
-  // Card actions (open / export / delete)
-  listEl.addEventListener('click', (e)=>{
-    const openId = e.target.getAttribute('data-open');
-    const delId = e.target.getAttribute('data-delete');
-    const expId = e.target.getAttribute('data-export');
-    if (!openId && !delId && !expId) return;
-
-    const items = loadCookbook();
-    const findById = (id) => items.find(r => r.id === id);
-
-    if (openId) {
-      const r = findById(openId);
-      if (!r) return;
-      outTitle.value = r.title;
-      outSource.value = r.source || '';
-      outIngredients.value = r.ingredients.map(x => '• ' + x).join('\n');
-      outSteps.value = r.steps.map((x,i) => `${i+1}. ${x}`).join('\n');
-      outServings.value = r.servings || '';
-      results.style.display = 'block';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    if (expId) {
-      const r = findById(expId);
-      if (!r) return;
-      const txt = buildTxtFromRecipe(r);
-      const safeName = (r.title || 'recipe').replace(/[^\w\-]+/g,'_').slice(0,60);
-      download(`${safeName}.txt`, txt);
-    }
-
-    if (delId) {
-      if (!confirm('Delete this recipe from your cookbook?')) return;
-      const next = items.filter(r => r.id !== delId);
-      saveCookbook(next);
-      renderCookbook(searchEl.value);
-    }
-  });
-
-  // initial render
-  renderCookbook();
 })();
 </script>
 </body>
