@@ -20,4 +20,19 @@ html::before{
   border: var(--frame) solid #ffc8d8;
 
   /* 2) Doodle tile background (very dense) */
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Crect width='160' height='160' fill='none'/%3E%3Cg stroke-linecap='round' stroke-linejoin='round'%3E%3C!-- tomatoes --%3E%3Cg fill='%23ff6b6b' stroke='%23e14848' stroke-width='3'%3E%3Ccircle cx=
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Crect width='160' height='160' fill='none'/%3E%3Cg stroke-linecap='round' stroke-linejoin='round'%3E%3C!-- tomatoes --%3E%3Cg fill='%23ff6b6b' stroke='%23e14848' stroke-width='3'%3E%3Ccircle cx='18' cy='20' r='10'/%3E%3Ccircle cx='60' cy='12' r='8'/%3E%3Ccircle cx='142' cy='20' r='11'/%3E%3Ccircle cx='20' cy='142' r='11'/%3E%3Ccircle cx='140' cy='140' r='10'/%3E%3C/g%3E%3C!-- lemons --%3E%3Cg fill='%23ffe24d' stroke='%23ffb703' stroke-width='3'%3E%3Cellipse cx='80' cy='18' rx='16' ry='10'/%3E%3Cellipse cx='14' cy='80' rx='12' ry='8'/%3E%3Cellipse cx='146' cy='80' rx='12' ry='8'/%3E%3Cellipse cx='80' cy='146' rx='16' ry='10'/%3E%3C/g%3E%3C!-- herb sprigs --%3E%3Cg stroke='%2339c172' stroke-width='4' fill='none'%3E%3Cpath d='M10 34 l12 -14'/%3E%3Cpath d='M150 126 l-12 14'/%3E%3Cpath d='M80 112 l8 -14 l8 14'/%3E%3C/g%3E%3C!-- bowls --%3E%3Cg fill='none' stroke='%23ff9f1a' stroke-width='6'%3E%3Cpath d='M42 14 c9 0 9 12 0 12 s-9 -12 0 -12z'/%3E%3Cpath d='M118 146 c9 0 9 -12 0 -12 s-9 12 0 12z'/%3E%3C/g%3E%3C!-- pasta squiggles --%3E%3Cg fill='none' stroke='%23ff3cac' stroke-width='4'%3E%3Cpath d='M26 36 q10 8 -4 16'/%3E%3Cpath d='M134 36 q10 8 -4 16'/%3E%3Cpath d='M30 120 q10 -8 -4 -16'/%3E%3Cpath d='M136 120 q10 -8 -4 -16'/%3E%3C/g%3E%3C!-- blue accents --%3E%3Cg fill='none' stroke='%2329a3ff' stroke-width='5'%3E%3Cpath d='M0 80 h34'/%3E%3Cpath d='M126 80 h34'/%3E%3Cpath d='M80 0 v34'/%3E%3Cpath d='M80 126 v34'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")
+              center / 160px 160px round no-repeat;
+
+  /* 3) Mask the center so only the frame area shows the doodles */
+  padding: var(--frame);
+  -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;   /* Safari/WebKit */
+          mask-composite: exclude; /* Chromium/Firefox */
+}
+
+/* Smaller frame on phones */
+@media (max-width: 640px){
+  :root { --frame: 48px; }
+}
