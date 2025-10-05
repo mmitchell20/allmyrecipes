@@ -1,22 +1,31 @@
-/* Light pink page with a very subtle squiggly pattern — no borders */
+/* Soft pink page with subtle squiggles + light food doodles (no borders) */
 :root { --bg: #ffeef3; }
 
 html, body { height: 100%; margin: 0; }
 
-/* Base tint + soft squiggle overlay */
+/* Base tint + layered tiles:
+   1) squiggles
+   2) playful food doodles (very low opacity)
+*/
 html{
   background-color: var(--bg);
-  /* light, repeating squiggles (SVG tile) */
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%23ff8fb8' stroke-width='6' stroke-linecap='round' stroke-opacity='.15'%3E%3Cpath d='M-10 40 q40 -20 80 0 t80 0'/%3E%3Cpath d='M-10 100 q40 -20 80 0 t80 0'/%3E%3C/g%3E%3Cg fill='none' stroke='%23ff8fb8' stroke-width='2.5' stroke-opacity='.1'%3E%3Cpath d='M-10 20 q40 -18 80 0 t80 0'/%3E%3Cpath d='M-10 80 q40 -18 80 0 t80 0'/%3E%3Cpath d='M-10 140 q40 -18 80 0 t80 0'/%3E%3C/g%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 160px 160px;
+
+  /* layer 1 — gentle squiggles */
+  --tile-squiggles: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%23ff8fb8' stroke-linecap='round'%3E%3Cpath d='M-10 40 q40 -20 80 0 t80 0' stroke-width='6' stroke-opacity='.13'/%3E%3Cpath d='M-10 100 q40 -20 80 0 t80 0' stroke-width='6' stroke-opacity='.13'/%3E%3Cpath d='M-10 20 q40 -18 80 0 t80 0' stroke-width='2.5' stroke-opacity='.09'/%3E%3Cpath d='M-10 80 q40 -18 80 0 t80 0' stroke-width='2.5' stroke-opacity='.09'/%3E%3Cpath d='M-10 140 q40 -18 80 0 t80 0' stroke-width='2.5' stroke-opacity='.09'/%3E%3C/g%3E%3C/svg%3E");
+
+  /* layer 2 — light food doodles */
+  --tile-doodles: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'%3E%3Crect width='240' height='240' fill='none'/%3E%3Cg stroke-linecap='round' stroke-linejoin='round'%3E%3C!-- lemon --%3E%3Cg opacity='.12'%3E%3Cellipse cx='40' cy='44' rx='18' ry='12' fill='%23ffe24d'/%3E%3Cpath d='M50 34 l10 -8' stroke='%2339c172' stroke-width='4'/%3E%3C/g%3E%3C!-- tomato --%3E%3Cg opacity='.12'%3E%3Ccircle cx='140' cy='36' r='12' fill='%23ff6b6b'/%3E%3Cpath d='M140 24 l6 -6 l-6 2 l-6 -2 l6 6' stroke='%2339c172' stroke-width='2'/%3E%3C/g%3E%3C!-- pie slice --%3E%3Cg opacity='.12'%3E%3Cpolygon points='185,70 215,84 185,98' fill='%23ff3cac'/%3E%3Cpath d='M185 70 L215 84 L185 98' stroke='%23ff9f1a' stroke-width='6' fill='none'/%3E%3C/g%3E%3C!-- wine glass --%3E%3Cg opacity='.12' fill='none' stroke='%2329a3ff' stroke-width='4'%3E%3Cpath d='M92 68 q22 0 22 14 t-22 14 t-22 -14 t22 -14z'/%3E%3Cpath d='M92 96 v14 m-10 8 h20'/%3E%3C/g%3E%3C!-- fork --%3E%3Cg opacity='.12' fill='none' stroke='%236c7a89' stroke-width='4' transform='translate(30,150) rotate(-10)'%3E%3Cpath d='M0 0 v40'/%3E%3Cpath d='M-8 0 v12'/%3E%3Cpath d='M-4 0 v12'/%3E%3Cpath d='M4 0 v12'/%3E%3C/g%3E%3C!-- fish --%3E%3Cg opacity='.12'%3E%3Cellipse cx='190' cy='170' rx='18' ry='11' fill='%2300b8d9'/%3E%3Cpath d='M202 170 l14 -10 v20 z' fill='%230086a3'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+
+  background-image: var(--tile-squiggles), var(--tile-doodles);
+  background-repeat: repeat, repeat;
+  background-size: 160px 160px, 240px 240px; /* adjust to change density */
+  background-position: 0 0, 80px 60px;       /* slight offset for randomness */
 }
 
 body{
   background: transparent;
-  min-height: 100dvh; /* prevents iOS/Chrome mobile white gaps */
+  min-height: 100dvh; /* prevents iOS/Chrome mobile gaps */
 }
 
-/* Safety: remove any older border overlays if they were present */
+/* Ensure any old border overlays are gone */
 html::before, html::after, body::before, body::after{ content:none !important; }
