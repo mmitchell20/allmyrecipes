@@ -1,85 +1,22 @@
-/* Pink background + BUSY food border that does NOT cover content */
-:root{
-  --bg: #ffeef3;   /* page background */
-  --frame: 48px;   /* border thickness; bump up/down if you like */
+/* Light pink page with a very subtle squiggly pattern — no borders */
+:root { --bg: #ffeef3; }
+
+html, body { height: 100%; margin: 0; }
+
+/* Base tint + soft squiggle overlay */
+html{
+  background-color: var(--bg);
+  /* light, repeating squiggles (SVG tile) */
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%23ff8fb8' stroke-width='6' stroke-linecap='round' stroke-opacity='.15'%3E%3Cpath d='M-10 40 q40 -20 80 0 t80 0'/%3E%3Cpath d='M-10 100 q40 -20 80 0 t80 0'/%3E%3C/g%3E%3Cg fill='none' stroke='%23ff8fb8' stroke-width='2.5' stroke-opacity='.1'%3E%3Cpath d='M-10 20 q40 -18 80 0 t80 0'/%3E%3Cpath d='M-10 80 q40 -18 80 0 t80 0'/%3E%3Cpath d='M-10 140 q40 -18 80 0 t80 0'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 160px 160px;
 }
 
-/* fill the viewport with pink so there’s never a white strip */
-html, body { height: 100%; margin: 0; }
-html { background: var(--bg); }
-
-/* Content lives INSIDE the frame */
 body{
   background: transparent;
-  min-height: 100dvh;           /* fixes mobile viewport jumps */
-  padding: var(--frame);         /* keeps content away from the border */
-  box-sizing: border-box;
+  min-height: 100dvh; /* prevents iOS/Chrome mobile white gaps */
 }
 
-/* ----------- DOODLE BORDER (four fixed bars) ----------- */
-/* Notes:
-   - Bars are fixed to the edges (so the border "travels correctly").
-   - pointer-events:none so they never block clicks.
-   - Body padding above prevents content from sliding underneath. */
-
-/* Top */
-html::before{
-  content:"";
-  position: fixed; z-index: 9999; pointer-events:none;
-  top:0; left:0; right:0; height: var(--frame);
-  background-color:#ffd3df;               /* soft fallback color */
-  background-image: var(--tile-h1), var(--tile-h2);
-  background-repeat: repeat-x, repeat-x;
-  background-size: 240px 100%, 200px 100%;
-  background-position: left top, 80px top;
-}
-
-/* Bottom */
-html::after{
-  content:"";
-  position: fixed; z-index: 9999; pointer-events:none;
-  bottom:0; left:0; right:0; height: var(--frame);
-  background-color:#ffd3df;
-  background-image: var(--tile-h1), var(--tile-h2);
-  background-repeat: repeat-x, repeat-x;
-  background-size: 240px 100%, 200px 100%;
-  background-position: left bottom, 120px bottom;
-}
-
-/* Left */
-body::before{
-  content:"";
-  position: fixed; z-index: 9999; pointer-events:none;
-  top:0; bottom:0; left:0; width: var(--frame);
-  background-color:#ffd3df;
-  background-image: var(--tile-v1), var(--tile-v2);
-  background-repeat: repeat-y, repeat-y;
-  background-size: 100% 240px, 100% 200px;
-  background-position: left top, left 60px;
-}
-
-/* Right */
-body::after{
-  content:"";
-  position: fixed; z-index: 9999; pointer-events:none;
-  top:0; bottom:0; right:0; width: var(--frame);
-  background-color:#ffd3df;
-  background-image: var(--tile-v1), var(--tile-v2);
-  background-repeat: repeat-y, repeat-y;
-  background-size: 100% 240px, 100% 200px;
-  background-position: right bottom, right 40px;
-}
-
-/* Slightly thinner on small screens (optional) */
-@media (max-width: 640px){
-  :root { --frame: 40px; }
-}
-
-/* ---------- dense, brighter food doodles (two layers for randomness) ---------- */
-@supports (background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'></svg>")) {
-  :root{
-    /* Horizontal layer 1: oranges, fork, tomato, fish, knife */
-    --tile-h1: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='72' viewBox='0 0 240 72'%3E%3Crect width='240' height='72' fill='none'/%3E%3Cg stroke-linecap='round' stroke-linejoin='round'%3E%3Cg%3E%3Ccircle cx='28' cy='36' r='13' fill='%23ffa62b' stroke='%23ff7a00' stroke-width='3'/%3E%3Cg stroke='%23ffdd8c' stroke-width='2'%3E%3Cpath d='M28 23 v26'/%3E%3Cpath d='M15 36 h26'/%3E%3Cpath d='M19 27 l18 18'/%3E%3Cpath d='M19 45 l18 -18'/%3E%3C/g%3E%3C/g%3E%3Cg fill='none' stroke='%236c7a89' stroke-width='4'%3E%3Cpath d='M74 18 v36'/%3E%3Cpath d='M66 18 v12'/%3E%3Cpath d='M70 18 v12'/%3E%3Cpath d='M78 18 v12'/%3E%3C/g%3E%3Cg%3E%3Ccircle cx='116' cy='36' r='12' fill='%23ff4d4d' stroke='%23e03a3a' stroke-width='3'/%3E%3Cpath d='M116 24 l6 -6 l-6 2 l-6 -2 l6 6' fill='%2339c172' stroke='%23309a5f' stroke-width='2'/%3E%3C/g%3E%3Cg%3Cellipse cx='164' cy='36' rx='16' ry='10' fill='%2300b8d9' stroke='%230086a3' stroke-width='3'/%3E%3Cpath d='M176 36 l14 -10 v20 z' fill='%230086a3'/%3E%3Ccircle cx='156' cy='34' r='2' fill='white'/%3E%3C/g%3E%3Cg%3E%3Cpath d='M220 26 L206 34 L206 38 L220 46 Z' fill='%23cfd4da' stroke='%238a9099' stroke-width='2'/%3E%3Crect x='192' y='30' width='14' height='12' rx='3' fill='%232d2d2d'/%3E%3Ccircle cx='196' cy='36' r='1.5' fill='white'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-
-    /* Horizontal layer 2: offset/shuffled */
-    --tile-h2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='72' viewBox='0 0 200 72'%3E%3Crect width='200' height='72' fill='none'/%3E%3Cg stroke-linecap='round' stroke-linejoin='round'%3E%3Cg%3E%3Ccircle cx='46' cy='22' r='9' fill='%23ffa62b' stroke='%23ff7a00' stroke-width='3'/%3E%3C/g%3E%3Cg%3E%3Ccircle cx='26' cy='54' r='8' fill='%23ff4d4d' stroke='%23e03a3a' stroke-width='3'/%3E%3Cpath d='M26 47 l4 -4 l-4 1 l-4 -1 l4 4' fill='%2339c172' stroke='%23309a5f' stroke-width='1.5'/%3E%3C/g%3E%3Cg fill='none' stroke='%236c7a89' stroke-width='3' transform='translate(96,12) rotate(15)'%3E%3Cpath d='M0 8 v32'/%3E%3Cpath d='M-6 8 v10'/%3E%3Cpath d='M-2 8 v10'/%3E%3Cpath d='M4 8 v10'/%3E
+/* Safety: remove any older border overlays if they were present */
+html::before, html::after, body::before, body::after{ content:none !important; }
