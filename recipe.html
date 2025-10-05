@@ -6,29 +6,48 @@
 <title>Recipe — allmyrecipes</title>
 <link rel="stylesheet" href="theme.css" />
 <style>
-  :root { --radius:12px; }
-  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;max-width:980px;margin:40px auto;padding:0 16px;line-height:1.5}
-  a{color:#111}
-  nav{display:flex;gap:14px;align-items:center;margin-bottom:12px}
-  nav a{padding:6px 10px;border:1px solid #eee;border-radius:8px;text-decoration:none}
-  .banner{
-    background:#e7ffef;border:1px solid #bbf0ce;border-radius:12px;
-    padding:10px 12px;margin-bottom:14px
+  :root { --radius:12px; --blue:#006cff; }
+
+  body{
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+    max-width:980px;margin:40px auto;padding:0 16px;line-height:1.5
   }
+  nav{display:flex;gap:12px;margin-bottom:14px}
+  nav a{padding:6px 10px;border:1px solid #eee;border-radius:8px;text-decoration:none;color:#111}
+  h1{margin:.25rem 0 .5rem;font-size:1.6rem}
   .muted{color:#666}
-  .row{display:flex;gap:12px;flex-wrap:wrap}
-  .card{border:1px solid #eee;border-radius:12px;padding:12px;margin-top:12px}
-  label{font-weight:600}
-  input[type=text], textarea{
-    width:100%;padding:10px;border:1px solid #ccc;border-radius:12px;font:inherit
+
+  .prompt{ margin:10px 0 8px; font-weight:600; }
+  .mode{ display:inline-block;background:#eef4ff;color:#0b57d0;border:1px solid #cddcff;border-radius:999px;padding:2px 8px;font-size:.85rem;margin-left:8px }
+
+  /* Editable box */
+  .editor{
+    background:#fff;border:1px solid #ddd;border-radius:12px;
+    padding:14px;min-height:320px;
+    white-space: pre-wrap; outline:none;
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    color:#111; position:relative;
+    transition: background-position .6s ease;
   }
-  textarea{min-height:120px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;background:#fff}
-  .titleInput{
-    font-size:1.6rem;font-weight:700;border-width:2px;margin-top:6px
+  /* New inserts stay blue UNTIL you save */
+  .editor .added{ color: var(--blue); }
+
+  /* Shimmer on save */
+  .editor.saving{
+    background-image: linear-gradient(90deg, rgba(255,255,255,0) 0%,
+                                             rgba(255,255,255,.7) 50%,
+                                             rgba(255,255,255,0) 100%);
+    background-size: 220% 100%;
+    animation: amrShimmer .7s ease-out 1;
   }
+  @keyframes amrShimmer{
+    0% { background-position: -120% 0; }
+    100% { background-position: 120% 0; }
+  }
+
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
   button{padding:10px 14px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer}
-  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-  .mutebar{color:#666;margin-top:6px}
+  .hint{ color:#666;margin-top:6px }
 </style>
 </head>
 <body>
@@ -37,141 +56,202 @@
     <a href="cookbook.html">Your Cookbook</a>
   </nav>
 
-  <div class="banner">
-    <strong>Cleaned!</strong> Make any edits below, then add a note if you like.
+  <h1>Cleaned recipe</h1>
+  <div class="prompt">
+    Any special touches or notes to add?
+    <span class="mode">New typing shows in blue (until you Save)</span>
   </div>
 
-  <label for="titleInput">Recipe name</label>
-  <input id="titleInput" class="titleInput" type="text" placeholder="Recipe title">
-
-  <div class="muted" id="meta" style="margin-top:6px"></div>
-
-  <div class="card">
-    <h3>Ingredients</h3>
-    <textarea id="ing"></textarea>
-    <div class="mutebar">Tip: one ingredient per line.</div>
-  </div>
-
-  <div class="card">
-    <h3>Steps</h3>
-    <textarea id="steps"></textarea>
-    <div class="mutebar">Tip: one step per line (numbers optional).</div>
-  </div>
-
-  <div class="card">
-    <h3>Servings</h3>
-    <textarea id="serv" placeholder="e.g., 4 or Makes 12 cookies"></textarea>
-  </div>
-
-  <div class="card">
-    <h3>Any special touches or notes to add?</h3>
-    <textarea id="notes" placeholder="Your tweaks, timing adjustments, brand notes, substitutions…"></textarea>
-  </div>
+  <div id="editor" class="editor" contenteditable="true" spellcheck="true"></div>
+  <div class="hint">Type anywhere to tweak. Paste works too.</div>
 
   <div class="actions">
-    <button id="save">Save to Cookbook</button>
-    <button id="download">Download .txt</button>
+    <button id="save">Save + add to cookbook</button>
     <span id="status" class="muted" style="align-self:center"></span>
   </div>
 
 <script>
 (function(){
-  const $ = (s)=>document.querySelector(s);
+  const editor = document.getElementById('editor');
+  const saveBtn = document.getElementById('save');
+  const statusEl = document.getElementById('status');
 
+  /* ---------- Build “cleaned” text from sessionStorage (set by index.html) ---------- */
+  function buildTxt(r){
+    const ingredients = (r.ingredients||[]).map(x=>'• '+x).join('\n');
+    const steps = (r.steps||[]).map((x,i)=> `${i+1}. ${x}`).join('\n');
+    let t = `Title: ${r.title || ''}\n`;
+    if (r.source) t += `Source: ${r.source}\n`;
+    t += `\nIngredients:\n${ingredients}\n\nSteps:\n${steps}`;
+    if (r.servings) t += `\n\nServings: ${r.servings}`;
+    t += `\n\nNotes:\n`; // space for your touches
+    return t;
+  }
+  function esc(s){return s.replace(/[&<>"]/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));}
+
+  let recipe = null;
+  try { recipe = JSON.parse(sessionStorage.getItem('amr_tmp')||'null'); } catch {}
+  if (!recipe){
+    document.body.innerHTML = `<nav>
+        <a href="index.html">Home</a>
+        <a href="cookbook.html">Your Cookbook</a>
+      </nav>
+      <p>Hmm, I can’t find a cleaned recipe to edit. Try <a href="index.html">pasting again</a>.</p>`;
+    return;
+  }
+
+  const originalText = buildTxt(recipe);
+  const originalHTML = esc(originalText).replace(/\n/g,'<br>');
+  editor.innerHTML = originalHTML;
+
+  // Keep the untouched original for later “Revert” step
+  window.__amr_original_html__ = originalHTML;
+
+  /* ---------- Editing: keep new inserts BLUE until Save ---------- */
+  function setCaretAfter(node){
+    const sel = window.getSelection();
+    const range = document.createRange();
+    range.setStartAfter(node);
+    range.setEndAfter(node);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function insertBlue(text){
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+
+    const parts = (text||'').split(/\r?\n/);
+    const frag = document.createDocumentFragment();
+    parts.forEach((chunk, idx)=>{
+      const span = document.createElement('span');
+      span.className = 'added';
+      span.textContent = chunk;
+      frag.appendChild(span);
+      if (idx < parts.length - 1) frag.appendChild(document.createElement('br'));
+    });
+
+    range.insertNode(frag);
+    // place caret after what we inserted
+    const marker = document.createElement('span');
+    range.collapse(false);
+    range.insertNode(marker);
+    setCaretAfter(marker);
+    marker.remove();
+  }
+
+  // Wrap typed characters and pasted text as .added (blue)
+  editor.addEventListener('beforeinput', (e)=>{
+    if (e.inputType === 'insertText' && e.data) {
+      e.preventDefault();
+      insertBlue(e.data);
+    } else if (e.inputType === 'insertLineBreak') {
+      e.preventDefault();
+      insertBlue('\n');
+    }
+    // allow deletes/formatting changes to pass through
+  });
+  editor.addEventListener('paste', (e)=>{
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    insertBlue(text);
+  });
+  editor.addEventListener('drop', (e)=> e.preventDefault());
+
+  /* ---------- Save → shimmer → commit blue to black → store in Cookbook ---------- */
   const STORE_KEY='amr_cb_v1';
   function loadCookbook(){ try{return JSON.parse(localStorage.getItem(STORE_KEY)||'[]');}catch{return[];} }
   function saveCookbook(a){ localStorage.setItem(STORE_KEY, JSON.stringify(a)); }
 
-  function sanitizeLines(txt){
-    return (txt||'').split('\n')
-      .map(s=>s.replace(/^\s*[•*-]?\s*\d{0,3}[.)]?\s*/,'').trim())
-      .filter(Boolean);
+  // Turn the editor HTML into plain text with line breaks
+  function editorToText(){
+    // innerText preserves line breaks across <br>
+    return editor.innerText.replace(/\u00A0/g,' ').trimEnd();
   }
 
-  function buildTxt(r){
-    const ingredients=r.ingredients.map(x=>'• '+x).join('\n');
-    const steps=r.steps.map((x,i)=>(i+1)+'. '+x).join('\n');
-    let t=`Title: ${r.title}\n`;
-    if (r.source) t+=`Source: ${r.source}\n`;
-    t+=`\nIngredients:\n${ingredients}\n\nSteps:\n${steps}`;
-    if (r.servings) t+=`\n\nServings: ${r.servings}`;
-    if (r.notes) t+=`\n\nNotes:\n${r.notes}`;
-    return t;
-  }
-
-  function renderFromRecipe(recipe){
-    $('#titleInput').value = recipe.title || '';
-    const source = recipe.source ? `<a href="${recipe.source}" target="_blank" rel="noopener">source</a> • ` : '';
-    $('#meta').innerHTML = `${source}${new Date(recipe.createdAt||Date.now()).toLocaleString()}`;
-    $('#ing').value   = (recipe.ingredients||[]).map(x=>'• '+x).join('\n');
-    $('#steps').value = (recipe.steps||[]).map((x,i)=>`${i+1}. ${x}`).join('\n');
-    $('#serv').value  = recipe.servings || '';
-    $('#notes').value = recipe.notes || '';
-  }
-
-  // Load: either saved (?id=…) or temp from index
-  const params=new URLSearchParams(location.search);
-  const id=params.get('id');
-  let recipe=null;
-  if(id){
-    const items=loadCookbook();
-    recipe=items.find(r=>r.id===id)||null;
-  }else{
-    try{ recipe=JSON.parse(sessionStorage.getItem('amr_tmp')||'null'); }catch{}
-  }
-  if(!recipe){
-    document.body.innerHTML=`<nav>
-      <a href="index.html">Home</a>
-      <a href="cookbook.html">Your Cookbook</a>
-    </nav><p>Couldn’t find a recipe to show. <a href="index.html">Go back</a>.</p>`;
-    return;
-  }
-  renderFromRecipe(recipe);
-
-  // Save
-  $('#save').addEventListener('click', ()=>{
-    const r = {
-      ...recipe,
-      title: $('#titleInput').value.trim() || recipe.title || 'Untitled',
-      source: recipe.source || '',
-      ingredients: sanitizeLines($('#ing').value),
-      steps: sanitizeLines($('#steps').value),
-      servings: ($('#serv').value||'').trim(),
-      notes: ($('#notes').value||'').trim()
+  // Parse the flat text back to structured fields
+  function parseStructured(full){
+    const get = (re) => {
+      const m = full.match(re);
+      return m ? m[1].trim() : '';
     };
+    // Sections by markers
+    const title   = get(/^Title:\s*(.*)$/m) || (recipe.title||'Untitled');
+    const source  = get(/^Source:\s*(.*)$/m);
 
-    const items=loadCookbook();
-    const idx = items.findIndex(x => x.id === r.id || x.title.toLowerCase() === r.title.toLowerCase());
+    // ingredients block
+    const ingBlock = get(/^\s*Ingredients:\s*\n([\s\S]*?)(?:\n(?:Steps:|Servings:|Notes:)|$)/m);
+    const ingLines = (ingBlock||'').split('\n').map(s=>s.trim()).filter(Boolean)
+      .map(s=>s.replace(/^\s*[•*\-]?\s*\d{0,3}[.)]?\s*/,''));
+    // steps block
+    const stepsBlock = get(/^\s*Steps:\s*\n([\s\S]*?)(?:\n(?:Servings:|Notes:)|$)/m);
+    const rawSteps = (stepsBlock||'').split('\n').map(s=>s.trim()).filter(Boolean);
+    const steps = rawSteps.map(s=> s.replace(/^\s*\d{1,3}[.)]\s*/,''));
 
-    if (idx >= 0) {
-      // keep id if we matched by title
-      r.id = items[idx].id;
-      items[idx] = r;
+    const servings = get(/^Servings:\s*(.*)$/m);
+    const notesBlock = get(/^\s*Notes:\s*\n([\s\S]*)$/m);
+    const notes = notesBlock || '';
+
+    return { title, source, ingredients: ingLines, steps, servings, notes };
+  }
+
+  function commitAdditionsToBlack(){
+    // unwrap .added spans into plain text nodes (so they render black)
+    const added = editor.querySelectorAll('.added');
+    added.forEach(span=>{
+      span.replaceWith(document.createTextNode(span.textContent));
+    });
+  }
+
+  saveBtn.addEventListener('click', ()=>{
+    // 1) shimmer
+    editor.classList.add('saving');
+
+    // 2) commit .added → black (unwrap spans)
+    commitAdditionsToBlack();
+
+    // 3) collect final text + parse
+    const finalText = editorToText();
+    const parsed = parseStructured(finalText);
+
+    // 4) save into Cookbook
+    const nowISO = new Date().toISOString();
+    const rec = {
+      id: recipe.id && recipe.id.startsWith('r_') ? recipe.id : 'r_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+      createdAt: recipe.createdAt || nowISO,
+      ...recipe,            // keep any original fields (e.g., source if missing)
+      ...parsed,            // overwrite with parsed edits
+    };
+    const items = loadCookbook();
+    const idxById = items.findIndex(x => x.id === rec.id);
+    const idxByTitle = items.findIndex(x => x.title.toLowerCase() === rec.title.toLowerCase());
+
+    if (idxById >= 0) {
+      items[idxById] = rec;
+    } else if (idxByTitle >= 0) {
+      rec.id = items[idxByTitle].id; // keep stable id
+      items[idxByTitle] = rec;
     } else {
-      r.id = r.id && r.id.startsWith('r_') ? r.id : 'r_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
-      items.unshift(r);
+      items.unshift(rec);
     }
     saveCookbook(items);
-    $('#status').textContent = 'Saved!';
-    setTimeout(()=>$('#status').textContent='', 1200);
+
+    // 5) done → brief status + clear shimmer class after animation
+    statusEl.textContent = 'Saved to your cookbook.';
+    setTimeout(()=> editor.classList.remove('saving'), 750);
+
+    // IMPORTANT: After save, we want future new typing to show blue again,
+    // so keep our insert handlers as-is. The already-committed text is now black.
   });
 
-  // Download
-  $('#download').addEventListener('click', ()=>{
-    const r = {
-      ...recipe,
-      title: $('#titleInput').value.trim() || recipe.title || 'Untitled',
-      ingredients: sanitizeLines($('#ing').value),
-      steps: sanitizeLines($('#steps').value),
-      servings: ($('#serv').value||'').trim(),
-      notes: ($('#notes').value||'').trim()
-    };
-    const blob=new Blob([buildTxt(r)],{type:'text/plain'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    const safe=(r.title||'recipe').replace(/[^\w\-]+/g,'_').slice(0,60);
-    a.href=url; a.download=`${safe}.txt`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  });
+  // (For later) expose a helper for revert step
+  window.__amr_reset_to_original__ = function(){
+    editor.innerHTML = window.__amr_original_html__;
+    statusEl.textContent = 'Reverted to original.';
+    setTimeout(()=> statusEl.textContent = '', 900);
+  };
 })();
 </script>
 </body>
