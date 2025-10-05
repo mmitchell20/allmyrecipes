@@ -4,19 +4,31 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Recipe — allmyrecipes</title>
-  <link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="theme.css" />
 <style>
   :root { --radius:12px; }
   body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;max-width:980px;margin:40px auto;padding:0 16px;line-height:1.5}
   a{color:#111}
   nav{display:flex;gap:14px;align-items:center;margin-bottom:12px}
   nav a{padding:6px 10px;border:1px solid #eee;border-radius:8px;text-decoration:none}
-  h1{margin:.25rem 0 .5rem}
+  .banner{
+    background:#e7ffef;border:1px solid #bbf0ce;border-radius:12px;
+    padding:10px 12px;margin-bottom:14px
+  }
   .muted{color:#666}
-  .card{border:1px solid #eee;border-radius:12px;padding:12px;margin-top:12px}
-  textarea{width:100%;min-height:120px;border:1px solid #ddd;border-radius:12px;padding:10px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;background:#fafafa}
-  button{padding:10px 14px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer;margin-right:8px}
   .row{display:flex;gap:12px;flex-wrap:wrap}
+  .card{border:1px solid #eee;border-radius:12px;padding:12px;margin-top:12px}
+  label{font-weight:600}
+  input[type=text], textarea{
+    width:100%;padding:10px;border:1px solid #ccc;border-radius:12px;font:inherit
+  }
+  textarea{min-height:120px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;background:#fff}
+  .titleInput{
+    font-size:1.6rem;font-weight:700;border-width:2px;margin-top:6px
+  }
+  button{padding:10px 14px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .mutebar{color:#666;margin-top:6px}
 </style>
 </head>
 <body>
@@ -25,27 +37,41 @@
     <a href="cookbook.html">Your Cookbook</a>
   </nav>
 
-  <h1 id="title">Recipe</h1>
-  <div class="muted" id="meta"></div>
+  <div class="banner">
+    <strong>Cleaned!</strong> Make any edits below, then add a note if you like.
+  </div>
+
+  <label for="titleInput">Recipe name</label>
+  <input id="titleInput" class="titleInput" type="text" placeholder="Recipe title">
+
+  <div class="muted" id="meta" style="margin-top:6px"></div>
 
   <div class="card">
     <h3>Ingredients</h3>
-    <textarea id="ing" readonly></textarea>
+    <textarea id="ing"></textarea>
+    <div class="mutebar">Tip: one ingredient per line.</div>
   </div>
 
   <div class="card">
     <h3>Steps</h3>
-    <textarea id="steps" readonly></textarea>
+    <textarea id="steps"></textarea>
+    <div class="mutebar">Tip: one step per line (numbers optional).</div>
   </div>
 
   <div class="card">
     <h3>Servings</h3>
-    <textarea id="serv" readonly></textarea>
+    <textarea id="serv" placeholder="e.g., 4 or Makes 12 cookies"></textarea>
   </div>
 
-  <div style="margin-top:12px">
+  <div class="card">
+    <h3>Any special touches or notes to add?</h3>
+    <textarea id="notes" placeholder="Your tweaks, timing adjustments, brand notes, substitutions…"></textarea>
+  </div>
+
+  <div class="actions">
     <button id="save">Save to Cookbook</button>
     <button id="download">Download .txt</button>
+    <span id="status" class="muted" style="align-self:center"></span>
   </div>
 
 <script>
@@ -56,16 +82,34 @@
   function loadCookbook(){ try{return JSON.parse(localStorage.getItem(STORE_KEY)||'[]');}catch{return[];} }
   function saveCookbook(a){ localStorage.setItem(STORE_KEY, JSON.stringify(a)); }
 
+  function sanitizeLines(txt){
+    return (txt||'').split('\n')
+      .map(s=>s.replace(/^\s*[•*-]?\s*\d{0,3}[.)]?\s*/,'').trim())
+      .filter(Boolean);
+  }
+
   function buildTxt(r){
     const ingredients=r.ingredients.map(x=>'• '+x).join('\n');
     const steps=r.steps.map((x,i)=>(i+1)+'. '+x).join('\n');
-    let t=`Title: ${r.title}\n`; if(r.source) t+=`Source: ${r.source}\n`;
+    let t=`Title: ${r.title}\n`;
+    if (r.source) t+=`Source: ${r.source}\n`;
     t+=`\nIngredients:\n${ingredients}\n\nSteps:\n${steps}`;
-    if(r.servings) t+=`\n\nServings: ${r.servings}`;
+    if (r.servings) t+=`\n\nServings: ${r.servings}`;
+    if (r.notes) t+=`\n\nNotes:\n${r.notes}`;
     return t;
   }
 
-  // get recipe: either from ?id=… (saved) or session "amr_tmp"
+  function renderFromRecipe(recipe){
+    $('#titleInput').value = recipe.title || '';
+    const source = recipe.source ? `<a href="${recipe.source}" target="_blank" rel="noopener">source</a> • ` : '';
+    $('#meta').innerHTML = `${source}${new Date(recipe.createdAt||Date.now()).toLocaleString()}`;
+    $('#ing').value   = (recipe.ingredients||[]).map(x=>'• '+x).join('\n');
+    $('#steps').value = (recipe.steps||[]).map((x,i)=>`${i+1}. ${x}`).join('\n');
+    $('#serv').value  = recipe.servings || '';
+    $('#notes').value = recipe.notes || '';
+  }
+
+  // Load: either saved (?id=…) or temp from index
   const params=new URLSearchParams(location.search);
   const id=params.get('id');
   let recipe=null;
@@ -75,7 +119,6 @@
   }else{
     try{ recipe=JSON.parse(sessionStorage.getItem('amr_tmp')||'null'); }catch{}
   }
-
   if(!recipe){
     document.body.innerHTML=`<nav>
       <a href="index.html">Home</a>
@@ -83,37 +126,50 @@
     </nav><p>Couldn’t find a recipe to show. <a href="index.html">Go back</a>.</p>`;
     return;
   }
+  renderFromRecipe(recipe);
 
-  // render
-  document.getElementById('title').textContent = recipe.title || 'Recipe';
-  const source = recipe.source ? `<a href="${recipe.source}" target="_blank" rel="noopener">source</a> • ` : '';
-  document.getElementById('meta').innerHTML = `${source}${new Date(recipe.createdAt||Date.now()).toLocaleString()}`;
-  document.getElementById('ing').value   = recipe.ingredients.map(x=>'• '+x).join('\n');
-  document.getElementById('steps').value = recipe.steps.map((x,i)=>`${i+1}. ${x}`).join('\n');
-  document.getElementById('serv').value  = recipe.servings || '';
+  // Save
+  $('#save').addEventListener('click', ()=>{
+    const r = {
+      ...recipe,
+      title: $('#titleInput').value.trim() || recipe.title || 'Untitled',
+      source: recipe.source || '',
+      ingredients: sanitizeLines($('#ing').value),
+      steps: sanitizeLines($('#steps').value),
+      servings: ($('#serv').value||'').trim(),
+      notes: ($('#notes').value||'').trim()
+    };
 
-  // save
-  document.getElementById('save').addEventListener('click', ()=>{
     const items=loadCookbook();
-    const existingIdx = items.findIndex(x=>x.title.toLowerCase()===recipe.title.toLowerCase());
-    if(existingIdx>=0){
-      if(!confirm(`"${recipe.title}" already exists. Overwrite?`)) return;
-      recipe.id = items[existingIdx].id;
-      items[existingIdx]=recipe;
-    }else{
-      recipe.id='r_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
-      items.unshift(recipe);
+    const idx = items.findIndex(x => x.id === r.id || x.title.toLowerCase() === r.title.toLowerCase());
+
+    if (idx >= 0) {
+      // keep id if we matched by title
+      r.id = items[idx].id;
+      items[idx] = r;
+    } else {
+      r.id = r.id && r.id.startsWith('r_') ? r.id : 'r_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+      items.unshift(r);
     }
     saveCookbook(items);
-    alert('Saved to Your Cookbook.');
+    $('#status').textContent = 'Saved!';
+    setTimeout(()=>$('#status').textContent='', 1200);
   });
 
-  // download
-  document.getElementById('download').addEventListener('click', ()=>{
-    const blob=new Blob([buildTxt(recipe)],{type:'text/plain'});
+  // Download
+  $('#download').addEventListener('click', ()=>{
+    const r = {
+      ...recipe,
+      title: $('#titleInput').value.trim() || recipe.title || 'Untitled',
+      ingredients: sanitizeLines($('#ing').value),
+      steps: sanitizeLines($('#steps').value),
+      servings: ($('#serv').value||'').trim(),
+      notes: ($('#notes').value||'').trim()
+    };
+    const blob=new Blob([buildTxt(r)],{type:'text/plain'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    const safe=(recipe.title||'recipe').replace(/[^\w\-]+/g,'_').slice(0,60);
+    const safe=(r.title||'recipe').replace(/[^\w\-]+/g,'_').slice(0,60);
     a.href=url; a.download=`${safe}.txt`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
   });
 })();
