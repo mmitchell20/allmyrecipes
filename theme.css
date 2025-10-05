@@ -1,56 +1,82 @@
-/* Clean pink background + busy food border that DOESN'T cover content */
+/* Pink background + BUSY food border that does NOT cover content */
 :root{
-  --bg: #ffeef3;
-  --frame: 50px;          /* thinner border; tweak up/down */
+  --bg: #ffeef3;   /* page background */
+  --frame: 48px;   /* border thickness; bump up/down if you like */
 }
 
-/* Basic setup */
-html, body { height: 100%; }
-*, *::before, *::after { box-sizing: border-box; }
+/* fill the viewport with pink so there’s never a white strip */
+html, body { height: 100%; margin: 0; }
+html { background: var(--bg); }
 
-/* The trick:
-   - We draw a real border on <body> (not an overlay).
-   - We add matching padding so content never touches or slides under it.
-   - We paint the pink interior and the doodle pattern using layered backgrounds,
-     clipped so the pink fills only the inside while doodles live in the border. */
+/* Content lives INSIDE the frame */
 body{
-  margin: 0 !important;
-
-  /* make room inside so content never sits under the border */
-  padding: var(--frame) !important;
-
-  /* real border; transparent so our doodle layer shows through */
-  border: var(--frame) solid transparent;
-
-  /* layered backgrounds:
-     1) solid pink fill for the inside (clipped to padding-box)
-     2) doodle tiles that repeat in the border (clipped to border-box) */
-  background-image:
-    linear-gradient(var(--bg), var(--bg)),
-    var(--tile1),
-    var(--tile2);
-  background-origin: padding-box, border-box, border-box;
-  background-clip:    padding-box, border-box, border-box;
-  background-repeat:  no-repeat, repeat, repeat;
-  background-size:    auto, 240px 240px, 200px 200px;
-  background-position:center, 0 0, 80px 60px; /* slight offset for randomness */
+  background: transparent;
+  min-height: 100dvh;           /* fixes mobile viewport jumps */
+  padding: var(--frame);         /* keeps content away from the border */
+  box-sizing: border-box;
 }
 
-/* Keep your content width without relying on body padding rules in pages */
-body > * { max-width: 980px; margin-left: auto; margin-right: auto; padding: 0 16px; }
+/* ----------- DOODLE BORDER (four fixed bars) ----------- */
+/* Notes:
+   - Bars are fixed to the edges (so the border "travels correctly").
+   - pointer-events:none so they never block clicks.
+   - Body padding above prevents content from sliding underneath. */
 
-/* ---------- Doodle tiles (busy & bright: oranges, forks, tomatoes, fish, knives) ---------- */
-@supports (background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'></svg>")) {
-  :root{
-    /* tile 1 */
-    --tile1: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'%3E%3Crect width='240' height='240' fill='none'/%3E%3Cg stroke-linecap='round' stroke-linejoin='round'%3E%3C!-- oranges --%3E%3Cg%3E%3Ccircle cx='36' cy='36' r='14' fill='%23ffa62b' stroke='%23ff7a00' stroke-width='3'/%3E%3Ccircle cx='180' cy='52' r='12' fill='%23ffa62b' stroke='%23ff7a00' stroke-width='3'/%3E%3C/g%3E%3C!-- forks --%3E%3Cg fill='none' stroke='%236c7a89' stroke-width='4'%3E%3Cpath d='M80 24 v50'/%3E%3Cpath d='M72 24 v14'/%3E%3Cpath d='M76 24 v14'/%3E%3Cpath d='M84 24 v14'/%3E%3Cpath d='M200 160 v50'/%3E%3Cpath d='M192 160 v14'/%3E%3Cpath d='M196 160 v14'/%3E%3Cpath d='M204 160 v14'/%3E%3C/g%3E%3C!-- tomatoes --%3E%3Cg%3E%3Ccircle cx='120' cy='32' r='12' fill='%23ff4d4d' stroke='%23e03a3a' stroke-width='3'/%3E%3Cpath d='M120 20 l6 -6 l-6 2 l-6 -2 l6 6' fill='%2339c172' stroke='%23309a5f' stroke-width='2'/%3E%3Ccircle cx='52' cy='170' r='10' fill='%23ff4d4d' stroke='%23e03a3a' stroke-width='3'/%3E%3Cpath d='M52 162 l5 -5 l-5 2 l-5 -2 l5 5' fill='%2339c172' stroke='%23309a5f' stroke-width='1.5'/%3E%3C/g%3E%3C!-- fish --%3E%3Cg%3Cellipse cx='156' cy='104' rx='18' ry='11' fill='%2300b8d9' stroke='%230086a3' stroke-width='3'/%3E%3Cpath d='M168 104 l16 -11 v22 z' fill='%230086a3'/%3E%3Ccircle cx='148' cy='102' r='2' fill='white'/%3E%3C/g%3E%3C!-- knives --%3E%3Cg%3E%3Cpath d='M40 208 L24 196 L22 196 L10 210 Z' fill='%23cfd4da' stroke='%238a9099' stroke-width='2'/%3E%3Crect x='12' y='210' width='12' height='14' rx='3' fill='%232d2d2d'/%3E%3Cpath d='M216 28 L202 36 L202 40 L216 48 Z' fill='%23cfd4da' stroke='%238a9099' stroke-width='2'/%3E%3Crect x='186' y='34' width='14' height='12' rx='3' fill='%232d2d2d'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-
-    /* tile 2 (offset layer for “randomness”) */
-    --tile2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='none'/%3E%3Cg stroke-linecap='round' stroke-linejoin='round'%3E%3C!-- orange small --%3E%3Ccircle cx='46' cy='28' r='10' fill='%23ffa62b' stroke='%23ff7a00' stroke-width='3'/%3E%3C!-- tomato small --%3E%3Ccircle cx='24' cy='140' r='8' fill='%23ff4d4d' stroke='%23e03a3a' stroke-width='3'/%3E%3Cpath d='M24 134 l4 -4 l-4 1 l-4 -1 l4 4' fill='%2339c172' stroke='%23309a5f' stroke-width='1.5'/%3E%3C!-- fork tilted --%3E%3Cg fill='none' stroke='%236c7a89' stroke-width='3' transform='translate(120,32) rotate(15)'%3E%3Cpath d='M0 8 v30'/%3E%3Cpath d='M-6 8 v10'/%3E%3Cpath d='M-2 8 v10'/%3E%3Cpath d='M4 8 v10'/%3E%3C/g%3E%3C!-- fish tiny --%3E%3Cg%3Cellipse cx='156' cy='160' rx='10' ry='6' fill='%2300b8d9' stroke='%230086a3' stroke-width='2'/%3E%3Cpath d='M164 160 l10 -7 v14 z' fill='%230086a3'/%3E%3C/g%3E%3C!-- knife tiny --%3E%3Cg%3E%3Cpath d='M184 88 L174 94 L174 96 L184 102 Z' fill='%23cfd4da' stroke='%238a9099' stroke-width='1.5'/%3E%3Crect x='166' y='92' width='8' height='7' rx='2' fill='%232d2d2d'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  }
+/* Top */
+html::before{
+  content:"";
+  position: fixed; z-index: 9999; pointer-events:none;
+  top:0; left:0; right:0; height: var(--frame);
+  background-color:#ffd3df;               /* soft fallback color */
+  background-image: var(--tile-h1), var(--tile-h2);
+  background-repeat: repeat-x, repeat-x;
+  background-size: 240px 100%, 200px 100%;
+  background-position: left top, 80px top;
 }
 
-/* Slightly reduce border on small screens */
+/* Bottom */
+html::after{
+  content:"";
+  position: fixed; z-index: 9999; pointer-events:none;
+  bottom:0; left:0; right:0; height: var(--frame);
+  background-color:#ffd3df;
+  background-image: var(--tile-h1), var(--tile-h2);
+  background-repeat: repeat-x, repeat-x;
+  background-size: 240px 100%, 200px 100%;
+  background-position: left bottom, 120px bottom;
+}
+
+/* Left */
+body::before{
+  content:"";
+  position: fixed; z-index: 9999; pointer-events:none;
+  top:0; bottom:0; left:0; width: var(--frame);
+  background-color:#ffd3df;
+  background-image: var(--tile-v1), var(--tile-v2);
+  background-repeat: repeat-y, repeat-y;
+  background-size: 100% 240px, 100% 200px;
+  background-position: left top, left 60px;
+}
+
+/* Right */
+body::after{
+  content:"";
+  position: fixed; z-index: 9999; pointer-events:none;
+  top:0; bottom:0; right:0; width: var(--frame);
+  background-color:#ffd3df;
+  background-image: var(--tile-v1), var(--tile-v2);
+  background-repeat: repeat-y, repeat-y;
+  background-size: 100% 240px, 100% 200px;
+  background-position: right bottom, right 40px;
+}
+
+/* Slightly thinner on small screens (optional) */
 @media (max-width: 640px){
   :root { --frame: 40px; }
 }
+
+/* ---------- dense, brighter food doodles (two layers for randomness) ---------- */
+@supports (background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'></svg>")) {
+  :root{
+    /* Horizontal layer 1: oranges, fork, tomato, fish, knife */
+    --tile-h1: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='72' viewBox='0 0 240 72'%3E%3Crect width='240' height='72' fill='none'/%3E%3Cg stroke-linecap='round' stroke-linejoin='round'%3E%3Cg%3E%3Ccircle cx='28' cy='36' r='13' fill='%23ffa62b' stroke='%23ff7a00' stroke-width='3'/%3E%3Cg stroke='%23ffdd8c' stroke-width='2'%3E%3Cpath d='M28 23 v26'/%3E%3Cpath d='M15 36 h26'/%3E%3Cpath d='M19 27 l18 18'/%3E%3Cpath d='M19 45 l18 -18'/%3E%3C/g%3E%3C/g%3E%3Cg fill='none' stroke='%236c7a89' stroke-width='4'%3E%3Cpath d='M
