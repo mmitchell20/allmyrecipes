@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Your Cookbook — allmyrecipes</title>
-  <link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="theme.css" />
 <style>
   :root { --radius:12px; }
   body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;max-width:980px;margin:40px auto;padding:0 16px;line-height:1.5}
@@ -60,16 +60,22 @@
 
     const items=load();
     const q=(filter||'').toLowerCase();
-    const filtered=q?items.filter(r=>r.title.toLowerCase().includes(q)||r.ingredients.join(' ').toLowerCase().includes(q)||(r.servings||'').toLowerCase().includes(q)):items;
+    const filtered=q?items.filter(r=>
+        (r.title||'').toLowerCase().includes(q) ||
+        (r.ingredients||[]).join(' ').toLowerCase().includes(q) ||
+        (r.servings||'').toLowerCase().includes(q) ||
+        (r.notes||'').toLowerCase().includes(q)
+      ):items;
 
     countEl.textContent = filtered.length ? `${filtered.length} saved` : 'No recipes saved yet';
     listEl.innerHTML = filtered.map(r=>{
       const created=new Date(r.createdAt||Date.now()).toLocaleDateString();
       const source=r.source?` • <a href="${r.source}" target="_blank" rel="noopener">source</a>`:'';
       const sv=r.servings?` • Servings: ${r.servings}`:'';
+      const noteBadge = r.notes ? ` • 📝 notes` : '';
       return `<div class="card">
         <h3>${r.title}</h3>
-        <div class="muted" style="margin-bottom:8px">${created}${sv}${source}</div>
+        <div class="muted" style="margin-bottom:8px">${created}${sv}${noteBadge}${source}</div>
         <div>
           <a href="recipe.html?id=${encodeURIComponent(r.id)}"><button>Open</button></a>
           <button data-del="${r.id}">Delete</button>
