@@ -15,7 +15,6 @@
   nav a{padding:6px 10px;border:1px solid #eee;border-radius:8px;text-decoration:none}
   h1{font-size:1.8rem;margin:.25rem 0 .5rem}
   .muted{color:#666}
-  .note{background:#fffbe6;border:1px solid #f0e6a0;border-radius:12px;padding:10px;margin:10px 0 18px}
   form{display:grid;gap:12px;margin:16px 0}
   label{font-weight:600}
   input[type=text], input[type=url], textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:12px;font:inherit}
@@ -31,8 +30,7 @@
   </nav>
 
   <h1>allmyrecipes</h1>
-  <p class="muted">Paste any messy recipe text and we’ll clean it into Ingredients + Steps. No scraping.</p>
-  <div class="note"><strong>Heads up:</strong> Use this for <em>personal</em> use. Don’t republish extracted content.</div>
+  <p class="muted">Paste any messy recipe text and we’ll clean it into Ingredients + Steps.</p>
 
   <form id="cleaner">
     <div>
@@ -73,7 +71,6 @@
   }
 
   function cleanSiteSuffix(s){
-    // chop trailing " - Site Name" or " | Site"
     s = s.replace(/\s*[-–—|]\s*(?:Allrecipes|Food Network|Bon App[ée]tit|NYT Cooking|Serious Eats|Epicurious|The Kitchn|Delish|BBC Good Food|Taste of Home|Tasty|Simply Recipes|Sally'?s Baking Addiction|King Arthur Baking|Bon Appetit)[^]*$/i, '');
     s = s.replace(/\s*[-–—|]\s*[A-Za-z0-9 .&'!]+$/,'');
     return s.trim();
@@ -99,12 +96,11 @@
     const lines = normalize(text).split('\n')
       .map(s=>s.trim())
       .filter(Boolean)
-      .slice(0, 40); // just the top of the paste
+      .slice(0, 40);
 
     const BAD = /^(ingredients?|directions?|instructions?|method|preparation|steps?|notes?|nutrition|servings?|yield|prep time|cook time|total time|course|cuisine)\b/i;
     const BULLET = /^\s*(?:[-*•]|\d+[.)])\s+/;
 
-    // quick pass: first clean line before "Ingredients"
     for (const l of lines){
       if (BAD.test(l)) break;
       if (BULLET.test(l)) continue;
@@ -112,12 +108,11 @@
       const hasManyNums = (l.match(/\d/g)||[]).length > 3;
       if (words >= 2 && words <= 12 && !hasManyNums) {
         let t = cleanSiteSuffix(l).replace(/\brecipe\b\s*$/i,'').trim();
-        t = t.replace(/^[“"']|[”"']$/g,''); // strip quotes
+        t = t.replace(/^[“"']|[”"']$/g,'');
         if (t.length >= 3 && t.length <= 80) return titleCase(t);
       }
     }
 
-    // fallback: first non-empty line
     const first = lines.find(l => !BAD.test(l) && !BULLET.test(l));
     return first ? titleCase(cleanSiteSuffix(first).replace(/\brecipe\b\s*$/i,'').trim()).slice(0,80) : '';
   }
@@ -125,7 +120,6 @@
   function maybeSuggest(){
     const txt = rawEl.value;
     const suggestion = guessTitle(txt);
-    // If the user hasn't typed a custom title, set the value; otherwise, just set placeholder
     if (!titleTouched && (!titleEl.value || titleEl.value.trim()==='')) {
       if (suggestion) titleEl.value = suggestion;
     } else if (suggestion) {
@@ -133,7 +127,6 @@
     }
   }
 
-  // Suggest when the user pastes/types
   rawEl.addEventListener('input', maybeSuggest);
   rawEl.addEventListener('paste', ()=> setTimeout(maybeSuggest, 0));
 
