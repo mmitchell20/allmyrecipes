@@ -1,60 +1,255 @@
-<!-- Replace your existing script with this -->
-<script type="module">
-  /* 1) Import the parser from your separate file */
-  import { parseRecipeText } from './parser-better.js';  /* <- change to './parse-better.js' if that's your filename */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>allmyrecipes — Paste Cleaner</title>
 
-  (function () {
-    const $ = (s) => document.querySelector(s);
+<link rel="stylesheet" href="theme.css">
 
-    const form     = $('#cleaner');
-    const titleEl  = $('#title');
-    const sourceEl = $('#source');
-    const rawEl    = $('#raw');
-    const statusEl = $('#status');
-    const errorEl  = $('#error');
+<style>
+  :root { --radius:12px; }
+  body{
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+    max-width:980px;margin:40px auto;padding:0 16px;line-height:1.5
+  }
+  a{color:#111}
+  nav{display:flex;gap:14px;align-items:center;margin-bottom:12px}
+  nav a{padding:6px 10px;border:1px solid #eee;border-radius:8px;text-decoration:none}
+  h1{font-size:1.8rem;margin:.25rem 0 .5rem}
+  .muted{color:#666}
+  form{display:grid;gap:12px;margin:16px 0}
+  label{font-weight:600}
+  input[type=text], input[type=url], textarea{
+    width:100%;padding:10px;border:1px solid #ccc;border-radius:12px;font:inherit
+  }
+  textarea{min-height:220px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace}
+  button{padding:10px 14px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer}
+  .error{color:#b00020;font-weight:600}
+</style>
+</head>
+<body>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="cookbook.html">Your Cookbook</a>
+  </nav>
 
-    /* Title suggestion using the parser’s title guess */
-    let titleTouched = false;
-    titleEl.addEventListener('input', () => { titleTouched = true; });
+  <h1>allmyrecipes</h1>
+  <p class="muted">Paste any messy recipe text and we’ll clean it into Ingredients + Steps.</p>
 
-    function maybeSuggest() {
-      const parsed = parseRecipeText(rawEl.value || '');
-      if (!titleTouched && (!titleEl.value || titleEl.value.trim() === '')) {
-        if (parsed.title) titleEl.value = parsed.title;
-      } else if (parsed.title) {
-        titleEl.placeholder = parsed.title;
-      }
+  <form id="cleaner">
+    <div>
+      <label for="title">Recipe name:</label>
+      <input id="title" type="text" placeholder="e.g., Spicy Lemon Pasta" />
+    </div>
+    <div>
+      <label for="source">Where'd you find the recipe? (original link)</label>
+      <input id="source" type="url" placeholder="https://example.com/the-recipe" />
+    </div>
+    <div>
+      <label for="raw">Ok, paste all the text you have and let's clean this up and get cooking!</label>
+      <textarea id="raw" placeholder="Paste the whole recipe text here…" required></textarea>
+    </div>
+    <div>
+      <button type="submit">Clean it up</button>
+      <span id="status" class="muted" style="margin-left:10px"></span>
+    </div>
+    <div id="error" class="error" role="alert"></div>
+  </form>
+
+<!-- =========================
+     Better parser (embedded)
+     ========================= -->
+<script>
+/* ---------- allmyrecipes: score-based recipe parser ---------- */
+const FRACTIONS = {
+  '¼':'1/4','½':'1/2','¾':'3/4','⅐':'1/7','⅑':'1/9','⅒':'1/10','⅓':'1/3','⅔':'2/3',
+  '⅕':'1/5','⅖':'2/5','⅗':'3/5','⅘':'4/5','⅙':'1/6','⅚':'5/6','⅛':'1/8','⅜':'3/8','⅝':'5/8','⅞':'7/8'
+};
+function normalizeText(t){
+  return (t||'').replace(/\r\n/g,'\n').replace(/\u00A0/g,' ')
+    .replace(/[ \t]{2,}/g,' ').replace(/[\u2022\u25CF\u25A0\u2219]/g,'•')
+    .replace(/[^\S\n]+\n/g,'\n').replace(/\n{3,}/g,'\n\n')
+    .replace(new RegExp(`[${Object.keys(FRACTIONS).join('')}]`,'g'), m=>FRACTIONS[m])
+    .trim();
+}
+const RE = {
+  qty: /(?:^|\s)(?:\d+(?:\.\d+)?(?:\s+\d\/\d)?|\d+\s?\d?\/\d|(?:1\/\d+))(?!\S)/,
+  unit: new RegExp(String.raw`\b(?:teaspoons?|tsp|tablespoons?|tbsp|cups?|c|pints?|pint|quarts?|qt|liters?|l|milliliters?|ml|grams?|g|kilograms?|kg|ounces?|oz|pounds?|lb|sticks?|cloves?|pinch|dash|slice|slices|can|cans|package|packages|packet|pkt)\b`, 'i'),
+  bullet: /^\s*(?:[-*•]|\d{1,3}[.)])\s+/,
+  headingIng: /^\s*(?:ingredients?|for the (?:dough|sauce|filling|topping|salad|cake|glaze))/i,
+  headingSteps: /^\s*(?:instructions?|directions?|method|preparation|prep|steps?)\s*:?\s*$/i,
+  headingOther: /^\s*(?:notes?|tips?|nutrition|equipment|tools?)\b/i,
+  servingsLine: /^\s*(?:servings?|serves|yield|makes)\b[:\-\s]*([^\n]+)$/i,
+  timeNoise: /\b(prep|cook|total)\s*time\b/i,
+  cookVerbs: /\b(preheat|heat|saute|sauté|bake|boil|simmer|stir|whisk|fold|mix|combine|beat|cream|knead|rest|chill|marinate|grill|roast|fry|broil|transfer|drain|season|serve|garnish|slice|add|reduce|increase|cover|uncover|let|cool|bring)\b/i
+};
+function guessTitleFromText(text){
+  const lines = text.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,40);
+  const BAD=/^(ingredients?|directions?|instructions?|method|preparation|steps?|notes?|nutrition|servings?|yield|prep time|cook time|total time|course|cuisine)\b/i;
+  for (const l of lines){
+    if (BAD.test(l)) break;
+    if (RE.bullet.test(l)) continue;
+    const words=l.split(/\s+/).length;
+    if (words>=2 && words<=12 && (l.match(/\d/g)||[]).length<=3){
+      return l.replace(/\s*[-–—|].*$/,'').replace(/\brecipe\b\s*$/i,'').replace(/^[“"']|[”"']$/g,'').trim();
     }
-    rawEl.addEventListener('input', maybeSuggest);
-    rawEl.addEventListener('paste', () => setTimeout(maybeSuggest, 0));
-
-    /* Submit -> call parser -> stash -> go to recipe page */
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      errorEl.textContent = '';
-      statusEl.textContent = 'Cleaning…';
-
-      try {
-        const parsed = parseRecipeText(rawEl.value || '');
-
-        const recipe = {
-          id: 'tmp_' + Date.now(),
-          title: (titleEl.value.trim() || parsed.title || '').trim(),
-          source: sourceEl.value.trim(),
-          ingredients: parsed.ingredients || [],
-          steps: parsed.steps || [],
-          servings: parsed.servings || '',
-          createdAt: new Date().toISOString()
-        };
-
-        sessionStorage.setItem('amr_tmp', JSON.stringify(recipe));
-        statusEl.textContent = 'Done. Opening recipe…';
-        window.location.href = 'recipe.html';
-      } catch (err) {
-        console.error(err);
-        statusEl.textContent = '';
-        errorEl.textContent = 'Could not clean this text. Try a different format.';
-      }
-    });
-  })();
+  }
+  return lines[0]||'';
+}
+function detectServings(text){
+  const lines=text.split('\n').map(s=>s.trim()).filter(Boolean);
+  const scan = arr => { for(const line of arr){ const m=line.match(RE.servingsLine); if(m) return m[1].replace(/\s*\(.*?\)\s*/g,'').trim(); } return ''; };
+  return scan(lines.slice(0,50)) || scan(lines.slice(-50));
+}
+function scoreLine(line){
+  const l=line.trim(); if(!l) return {type:'blank',sIng:0,sStep:0,sHead:0};
+  const unbul=l.replace(RE.bullet,'').trim();
+  if (RE.headingIng.test(l))   return {type:'heading-ing',sIng:0,sStep:0,sHead:2};
+  if (RE.headingSteps.test(l)) return {type:'heading-steps',sIng:0,sStep:0,sHead:2};
+  if (RE.headingOther.test(l)) return {type:'heading-other',sIng:0,sStep:0,sHead:1};
+  let sIng=0,sStep=0;
+  if (RE.qty.test(unbul))  sIng+=2.0;
+  if (RE.unit.test(unbul)) sIng+=2.0;
+  if (/,\s*(divided|softened|melted|minced|chopped|diced|room\s*temperature)/i.test(unbul)) sIng+=0.7;
+  if (/^\d{1,2}\s*x\s*/i.test(unbul)) sIng+=0.5;
+  if (/salt|pepper|oil|butter|flour|sugar|garlic|onion|egg|eggs|milk|cream|yeast|vanilla|tomato/i.test(unbul)) sIng+=0.6;
+  if (RE.bullet.test(l)) sIng+=0.6;
+  if (RE.cookVerbs.test(unbul)) sStep+=1.6;
+  if (RE.bullet.test(l)) sStep+=0.8;
+  if (/[.!?]$/.test(unbul)) sStep+=0.4;
+  if (/\bminutes?\b|\bhours?\b|\b°F\b|\bdegrees\b/i.test(unbul)) sStep+=0.5;
+  if (RE.timeNoise.test(unbul)) sStep-=0.5;
+  if (/^(?:add|stir|mix|whisk|beat|combine|fold|pour|place|preheat|cook|bake|simmer|boil)\b/i.test(unbul)) sStep+=0.5;
+  return {type:'content',sIng,sStep,sHead:0};
+}
+function splitSentences(text){
+  const ABBR=['min','mins','sec','secs','tsp','tbsp','oz','approx','pkg','pt','qt','vs','mr','mrs','dr'];
+  const out=[]; let buf=''; const isEOS=(p,n,w)=>{ if(/\d/.test(p)&&/\d/.test(n))return false; if(w&&ABBR.includes(w.toLowerCase()))return false; return /[A-Z0-9]/.test(n||'A'); };
+  for(let i=0;i<text.length;i++){ const ch=text[i]; buf+=ch;
+    if(/[.!?]/.test(ch)){ let j=i+1; while(j<text.length&&/\s/.test(text[j])) j++; let k=i-1; while(k>=0&&text[k]===' ') k--; let we=k; while(k>=0&&/[A-Za-z]/.test(text[k])) k--; const prev=text.slice(k+1,we+1);
+      if(isEOS(text[i-1]||'',text[j]||'',prev)){ out.push(buf.trim()); buf=''; i=j-1; } } }
+  if(buf.trim()) out.push(buf.trim()); return out;
+}
+function chunkLongStep(s){
+  const MAX=220; if(s.length<=MAX) return [s.trim()];
+  let parts=s.split(/;|\.\s+(?=(?:Then|Next|Meanwhile|After|Before|Once|When|Return|Stir|Add|Bake|Cook|Transfer|Let|Serve|Season|Reduce|Increase|Whisk|Simmer|Boil|Drain)\b)/gi).map(t=>t.trim()).filter(Boolean);
+  if(parts.length===1&&parts[0].length>MAX){ parts=s.split(/\s+(?:and\s+then|then|after that)\s+/gi).map(t=>t.trim()).filter(Boolean); }
+  if(parts.some(p=>p.length>MAX)) parts=splitSentences(s);
+  return parts.map(t=>t.replace(/\s*\.\s*$/,''));
+}
+function parseRecipeText(rawInput){
+  const raw=normalizeText(rawInput);
+  const title=guessTitleFromText(raw);
+  const servings=detectServings(raw);
+  const lines=raw.split('\n');
+  let inIng=false,inSteps=false;
+  const tokens=lines.map((line,idx)=>{
+    const sc=scoreLine(line);
+    if(RE.headingIng.test(line)){ inIng=true; inSteps=false; return {idx,line,...sc}; }
+    if(RE.headingSteps.test(line)){ inSteps=true; inIng=false; return {idx,line,...sc}; }
+    return {idx,line,inIng,inSteps,...sc};
+  });
+  const itemsIng=[], itemsStep=[];
+  tokens.forEach(t=>{
+    if(t.type?.startsWith('heading')||!t.line.trim()) return;
+    let sIng=t.sIng, sStep=t.sStep;
+    if(t.inIng) sIng+=0.8; if(t.inSteps) sStep+=0.8;
+    if(sIng>=1.8 && sIng>=sStep){
+      let s=t.line.trim().replace(RE.bullet,'').replace(/\s*,\s*/g,', ').replace(/\s{2,}/g,' ')
+        .replace(/\s*\.\s*$/,'').replace(/\b(tsp|tbsp|oz)\.\b/ig,(m,p)=>p);
+      itemsIng.push(s);
+    } else if (sStep>=1.6){
+      itemsStep.push(t.line.trim());
+    } else if (RE.bullet.test(t.line)){
+      itemsIng.push(t.line.replace(RE.bullet,'').trim());
+    }
+  });
+  let ingredients = itemsIng.length>=2 ? itemsIng :
+    lines.filter(l=>{const sc=scoreLine(l); return sc.sIng>=1.8 && sc.sIng>=sc.sStep;})
+         .map(l=>l.replace(RE.bullet,'').trim());
+  let steps;
+  if(itemsStep.length>=2){
+    const merged=[]; let cur='';
+    const starts=l=>RE.bullet.test(l)||/^\s*step\s*\d+/i.test(l)||/^\d{1,3}\s*[.)]\s+/.test(l);
+    for(const l of itemsStep){
+      const clean=l.replace(RE.bullet,'').replace(/^step\s*\d+\s*[:.)-]?\s*/i,'').trim();
+      if(starts(l)){ if(cur.trim()) merged.push(cur.trim()); cur=clean; } else { cur=(cur?cur+' ':'')+clean; }
+    }
+    if(cur.trim()) merged.push(cur.trim());
+    steps=[]; merged.forEach(s=>steps.push(...chunkLongStep(s)));
+  } else {
+    const body=raw.split(/\bingredients?\b/i)[1]?raw.split(/\bingredients?\b/i)[1]:raw;
+    const paras=body.split(/\n{2,}/).map(s=>s.trim()).filter(Boolean);
+    steps=[]; paras.forEach(p=>{ if(scoreLine(p).sStep>=1.0 || /[.!?]$/.test(p)) steps.push(...chunkLongStep(p)); });
+    steps=steps.filter(s=>s.length>2);
+  }
+  steps=steps.map(s=>s.replace(/^\d{1,3}\s*[.)]\s+/,'').replace(/\s*\.\s*$/,''));
+  const seen=new Set();
+  ingredients=ingredients.map(s=>s.replace(/\s{2,}/g,' ').trim()).filter(Boolean)
+    .filter(s=>{const k=s.toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true;});
+  return { title, servings, ingredients, steps, notes:'' };
+}
 </script>
+
+<!-- =========================
+     App wiring (calls parser)
+     ========================= -->
+<script>
+(function(){
+  const $ = (s)=>document.querySelector(s);
+  const statusEl = $('#status'), errorEl = $('#error');
+  const titleEl  = $('#title'),  sourceEl = $('#source'), rawEl = $('#raw');
+
+  // Track if user typed a custom title
+  let titleTouched = false;
+  titleEl.addEventListener('input', ()=>{ titleTouched = true; });
+
+  // Suggest title as they paste/type using the parser's guess
+  function maybeSuggest(){
+    const txt = rawEl.value;
+    const parsed = parseRecipeText(txt);
+    if (!titleTouched && (!titleEl.value || titleEl.value.trim()==='')) {
+      if (parsed.title) titleEl.value = parsed.title;
+    } else if (parsed.title) {
+      titleEl.placeholder = parsed.title;
+    }
+  }
+  rawEl.addEventListener('input', maybeSuggest);
+  rawEl.addEventListener('paste', ()=> setTimeout(maybeSuggest, 0));
+
+  // Submit -> parse -> stash -> go to recipe page
+  document.getElementById('cleaner').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    errorEl.textContent = '';
+    statusEl.textContent = 'Cleaning…';
+
+    try {
+      const raw = rawEl.value;
+
+      // ---- CALL THE BETTER PARSER HERE ----
+      const parsed = parseRecipeText(raw);   // <-- call better parser
+
+      const recipe = {
+        id: 'tmp_' + Date.now(),
+        title: (titleEl.value.trim() || parsed.title || '').trim(),
+        source: sourceEl.value.trim(),
+        ingredients: parsed.ingredients,
+        steps: parsed.steps,
+        servings: parsed.servings,
+        createdAt: new Date().toISOString()
+      };
+
+      sessionStorage.setItem('amr_tmp', JSON.stringify(recipe));
+      statusEl.textContent = 'Done. Opening recipe…';
+      window.location.href = 'recipe.html';
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = '';
+      errorEl.textContent = 'Could not clean this text. Try a different format.';
+    }
+  });
+})();
+</script>
+</body>
+</html>
