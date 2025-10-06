@@ -27,13 +27,10 @@
     white-space: pre-wrap; outline:none;
     font-family:ui-monospace,Menlo,Consolas,monospace;
     color:#111; position:relative;
-    transition: background-position .6s ease, color .2s ease;
+    transition: background-position .6s ease, color .2s ease, opacity .15s ease;
   }
   /* New inserts stay blue UNTIL you save */
   .editor .added{ color: var(--blue); }
-
-  /* Revert effect (when no .added present): tint everything blue briefly */
-  .editor.revert-all{ color: var(--blue) !important; }
 
   /* Shimmer on save */
   .editor.saving{
@@ -49,8 +46,9 @@
   }
 
   .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-  button{padding:10px 14px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer}
+  button{padding:10px 14px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
   button[disabled]{opacity:.6;cursor:not-allowed}
+  .icon{width:18px;height:18px;display:inline-block;line-height:0}
   .hint{ color:#666;margin-top:6px }
 </style>
 </head>
@@ -70,8 +68,30 @@
   <div class="hint">Type anywhere to tweak. Paste works too.</div>
 
   <div class="actions">
-    <button id="save">Save + add to cookbook</button>
-    <button id="revert" type="button">Revert to original</button>
+    <button id="save">
+      <span class="icon" aria-hidden="true">
+        <!-- checkmark cloud-ish save icon -->
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 18a4 4 0 0 0 0-8h-.3A6.5 6.5 0 0 0 6 9.5v.1A4.5 4.5 0 0 0 7.5 18H19zM11 13.5l-1.8 1.8-1.4-1.4 3.2-3.2L16 15.7l-1.4 1.4L11 13.5z"/></svg>
+      </span>
+      Save + add to cookbook
+    </button>
+
+    <button id="revert" type="button" title="Revert to original (preview)">
+      <span class="icon" aria-hidden="true">
+        <!-- history/clockwise arrow icon -->
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5a7 7 0 1 1-4.95 2.05L5 5h5v5L8.94 8.94A5 5 0 1 0 17 12a1 1 0 1 1 2 0 7 7 0 0 1-7 7 7 7 0 1 1 0-14z"/></svg>
+      </span>
+      Revert to original
+    </button>
+
+    <button id="showUpdated" type="button" style="display:none">
+      <!-- right-turn arrow icon -->
+      <span class="icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 7l5 5-5 5V7zM4 5h6v2H6v10h4v2H4V5z"/></svg>
+      </span>
+      Updated
+    </button>
+
     <span id="status" class="muted" style="align-self:center"></span>
   </div>
 
@@ -80,9 +100,10 @@
   const editor = document.getElementById('editor');
   const saveBtn = document.getElementById('save');
   const revertBtn = document.getElementById('revert');
+  const showUpdatedBtn = document.getElementById('showUpdated');
   const statusEl = document.getElementById('status');
 
-  /* ---------- Build “cleaned” text from sessionStorage (set by index.html) ---------- */
+  /* ---------- Build cleaned text from sessionStorage ---------- */
   function buildTxt(r){
     const ingredients = (r.ingredients||[]).map(x=>'• '+x).join('\n');
     const steps = (r.steps||[]).map((x,i)=> `${i+1}. ${x}`).join('\n');
@@ -90,10 +111,22 @@
     if (r.source) t += `Source: ${r.source}\n`;
     t += `\nIngredients:\n${ingredients}\n\nSteps:\n${steps}`;
     if (r.servings) t += `\n\nServings: ${r.servings}`;
-    t += `\n\nNotes:\n`; // space for your touches
+    t += `\n\nNotes:\n`;
+    return t;
+  }
+  function buildTxtFromRecipe(r){
+    const ingredients = (r.ingredients||[]).map(x=>'• '+x).join('\n');
+    const steps = (r.steps||[]).map((x,i)=> `${i+1}. ${x}`).join('\n');
+    let t = `Title: ${r.title||''}\n`;
+    if (r.source) t += `Source: ${r.source}\n`;
+    t += `\nIngredients:\n${ingredients}\n\nSteps:\n${steps}`;
+    if (r.servings) t += `\n\nServings: ${r.servings}`;
+    if ((r.notes||'').trim()) t += `\n\nNotes:\n${r.notes}`;
+    else t += `\n\nNotes:\n`;
     return t;
   }
   function esc(s){return s.replace(/[&<>"]/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));}
+  function toHTML(text){ return esc(text).replace(/\n/g,'<br>'); }
 
   let recipe = null;
   try { recipe = JSON.parse(sessionStorage.getItem('amr_tmp')||'null'); } catch {}
@@ -106,12 +139,8 @@
     return;
   }
 
-  const originalText = buildTxt(recipe);
-  const originalHTML = esc(originalText).replace(/\n/g,'<br>');
-  editor.innerHTML = originalHTML;
-
-  // Keep the untouched original for Revert
-  const ORIGINAL_HTML = originalHTML;
+  const ORIGINAL_HTML = toHTML(buildTxt(recipe));
+  editor.innerHTML = ORIGINAL_HTML;
 
   /* ---------- Editing: keep new inserts BLUE until Save ---------- */
   function setCaretAfter(node){
@@ -140,7 +169,6 @@
     });
 
     range.insertNode(frag);
-    // place caret after what we inserted
     const marker = document.createElement('span');
     range.collapse(false);
     range.insertNode(marker);
@@ -148,7 +176,6 @@
     marker.remove();
   }
 
-  // Wrap typed characters and pasted text as .added (blue)
   editor.addEventListener('beforeinput', (e)=>{
     if (e.inputType === 'insertText' && e.data) {
       e.preventDefault();
@@ -157,7 +184,6 @@
       e.preventDefault();
       insertBlue('\n');
     }
-    // allow deletes/formatting changes to pass through
   });
   editor.addEventListener('paste', (e)=>{
     e.preventDefault();
@@ -171,31 +197,18 @@
   function loadCookbook(){ try{return JSON.parse(localStorage.getItem(STORE_KEY)||'[]');}catch{return[];} }
   function saveCookbook(a){ localStorage.setItem(STORE_KEY, JSON.stringify(a)); }
 
-  // Turn the editor HTML into plain text with line breaks
-  function editorToText(){
-    // innerText preserves line breaks across <br>
-    return editor.innerText.replace(/\u00A0/g,' ').trimEnd();
-  }
+  function editorToText(){ return editor.innerText.replace(/\u00A0/g,' ').trimEnd(); }
 
-  // Parse the flat text back to structured fields
   function parseStructured(full){
-    const get = (re) => {
-      const m = full.match(re);
-      return m ? m[1].trim() : '';
-    };
+    const get = (re) => { const m = full.match(re); return m ? m[1].trim() : ''; };
     const title   = get(/^Title:\s*(.*)$/m) || (recipe.title||'Untitled');
     const source  = get(/^Source:\s*(.*)$/m);
-
-    // ingredients
     const ingBlock = get(/^\s*Ingredients:\s*\n([\s\S]*?)(?:\n(?:Steps:|Servings:|Notes:)|$)/m);
     const ingredients = (ingBlock||'').split('\n').map(s=>s.trim()).filter(Boolean)
       .map(s=>s.replace(/^\s*[•*\-]?\s*\d{0,3}[.)]?\s*/,''));
-
-    // steps
     const stepsBlock = get(/^\s*Steps:\s*\n([\s\S]*?)(?:\n(?:Servings:|Notes:)|$)/m);
     const steps = (stepsBlock||'').split('\n').map(s=>s.trim()).filter(Boolean)
       .map(s=> s.replace(/^\s*\d{1,3}[.)]\s*/,''));
-
     const servings = get(/^Servings:\s*(.*)$/m);
     const notesBlock = get(/^\s*Notes:\s*\n([\s\S]*)$/m);
     const notes = notesBlock || '';
@@ -203,90 +216,90 @@
   }
 
   function commitAdditionsToBlack(){
-    // unwrap .added spans into plain text nodes (so they render black)
-    const added = editor.querySelectorAll('.added');
-    added.forEach(span=>{
+    editor.querySelectorAll('.added').forEach(span=>{
       span.replaceWith(document.createTextNode(span.textContent));
     });
   }
 
   saveBtn.addEventListener('click', ()=>{
-    saveBtn.disabled = true;
-    revertBtn.disabled = true;
+    saveBtn.disabled = true; revertBtn.disabled = true; showUpdatedBtn.disabled = true;
 
-    // 1) shimmer
-    editor.classList.add('saving');
+    editor.classList.add('saving');          // shimmer
+    commitAdditionsToBlack();                // blue → black
 
-    // 2) commit .added → black (unwrap spans)
-    commitAdditionsToBlack();
-
-    // 3) collect final text + parse
     const finalText = editorToText();
     const parsed = parseStructured(finalText);
 
-    // 4) save into Cookbook
     const nowISO = new Date().toISOString();
     const rec = {
       id: recipe.id && recipe.id.startsWith('r_') ? recipe.id : 'r_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
       createdAt: recipe.createdAt || nowISO,
-      ...recipe,     // keep any original fields (e.g., source if missing)
-      ...parsed,     // overwrite with parsed edits
+      ...recipe,
+      ...parsed,
     };
+
     const items = loadCookbook();
     const idxById = items.findIndex(x => x.id === rec.id);
     const idxByTitle = items.findIndex(x => x.title.toLowerCase() === rec.title.toLowerCase());
 
-    if (idxById >= 0) {
-      items[idxById] = rec;
-    } else if (idxByTitle >= 0) {
-      rec.id = items[idxByTitle].id; // keep stable id
-      items[idxByTitle] = rec;
-    } else {
-      items.unshift(rec);
-    }
-    saveCookbook(items);
+    if (idxById >= 0)       items[idxById] = rec;
+    else if (idxByTitle>=0){ rec.id = items[idxByTitle].id; items[idxByTitle] = rec; }
+    else                    items.unshift(rec);
 
-    // 5) done → brief status + clear shimmer + re-enable
+    saveCookbook(items);
+    sessionStorage.setItem('amr_last_saved_title', rec.title);
+
     statusEl.textContent = 'Saved to your cookbook.';
     setTimeout(()=> {
       editor.classList.remove('saving');
-      saveBtn.disabled = false;
-      revertBtn.disabled = false;
+      saveBtn.disabled = false; revertBtn.disabled = false; showUpdatedBtn.disabled = false;
     }, 750);
   });
 
-  /* ---------- Revert to original ----------
-     Behavior:
-     - If there are .added spans (unsaved edits), keep them blue for ~300ms, then reset.
-     - If there aren’t any (e.g., you saved already), tint the whole text blue briefly, then reset.
-  */
+  /* ---------- Revert preview + Updated toggle ---------- */
+  let previewingOriginal = false;
+  let workingHTML = editor.innerHTML; // current editable state (with blue spans)
+
+  function loadLatestSavedHTML(){
+    const items = loadCookbook();
+    const lastTitle = (sessionStorage.getItem('amr_last_saved_title') || recipe.title || '').toLowerCase();
+    const saved = items.find(r => (r.title||'').toLowerCase() === lastTitle);
+    if (!saved) return null;
+    return toHTML(buildTxtFromRecipe(saved));
+  }
+
   revertBtn.addEventListener('click', ()=>{
+    if (previewingOriginal) return;
+
+    // keep current editor view to return to (working or saved later)
+    workingHTML = editor.innerHTML;
+
+    // show original baseline, read-only
+    editor.innerHTML = ORIGINAL_HTML;
+    editor.setAttribute('contenteditable','false');
     saveBtn.disabled = true;
-    revertBtn.disabled = true;
+    showUpdatedBtn.style.display = 'inline-flex';
 
-    const hasAdded = !!editor.querySelector('.added');
+    statusEl.textContent = 'Viewing original (not saved).';
+    previewingOriginal = true;
+  });
 
-    if (hasAdded) {
-      // they’re already blue — just give a tiny pause so you notice, then reset
-      setTimeout(()=> {
-        editor.innerHTML = ORIGINAL_HTML;  // full restore
-        statusEl.textContent = 'Reverted to original.';
-        setTimeout(()=> statusEl.textContent = '', 1000);
-        saveBtn.disabled = false;
-        revertBtn.disabled = false;
-      }, 320);
+  showUpdatedBtn.addEventListener('click', ()=>{
+    // Try most recent SAVED version first
+    const savedHTML = loadLatestSavedHTML();
+    if (savedHTML) {
+      editor.innerHTML = savedHTML;
     } else {
-      // no .added spans (e.g., after save) — tint all text blue briefly, then restore
-      editor.classList.add('revert-all');
-      setTimeout(()=> {
-        editor.classList.remove('revert-all');
-        editor.innerHTML = ORIGINAL_HTML;
-        statusEl.textContent = 'Reverted to original.';
-        setTimeout(()=> statusEl.textContent = '', 1000);
-        saveBtn.disabled = false;
-        revertBtn.disabled = false;
-      }, 320);
+      // fallback to whatever you were working on before preview
+      editor.innerHTML = workingHTML;
     }
+
+    editor.setAttribute('contenteditable','true');
+    saveBtn.disabled = false;
+    showUpdatedBtn.style.display = 'none';
+    statusEl.textContent = 'Showing updated version.';
+    setTimeout(()=> statusEl.textContent = '', 1200);
+    previewingOriginal = false;
   });
 
 })();
