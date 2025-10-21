@@ -164,3 +164,58 @@ export function parseRecipeText(text) {
 
 // Optional: export for debugging
 export { classifyLine };
+
+
+<script type="module">
+  import { parseRecipeText } from './parser-better.js';
+
+  (function () {
+    const $ = (s) => document.querySelector(s);
+    const form = $('#cleaner');
+    const titleEl = $('#title');
+    const sourceEl = $('#source');
+    const rawEl = $('#raw');
+    const statusEl = $('#status');
+    const errorEl = $('#error');
+
+    let titleTouched = false;
+    titleEl.addEventListener('input', () => { titleTouched = true; });
+
+    function maybeSuggest() {
+      const parsed = parseRecipeText(rawEl.value || '');
+      if (!titleTouched && (!titleEl.value || titleEl.value.trim() === '')) {
+        if (parsed.title) titleEl.value = parsed.title;
+      } else if (parsed.title) {
+        titleEl.placeholder = parsed.title;
+      }
+    }
+    rawEl.addEventListener('input', maybeSuggest);
+    rawEl.addEventListener('paste', () => setTimeout(maybeSuggest, 0));
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      errorEl.textContent = '';
+      statusEl.textContent = 'Cleaning…';
+      try {
+        const parsed = parseRecipeText(rawEl.value || '');
+        const recipe = {
+          id: 'tmp_' + Date.now(),
+          title: (titleEl.value.trim() || parsed.title || '').trim(),
+          source: sourceEl.value.trim(),
+          ingredients: parsed.ingredients || [],
+          steps: parsed.steps || [],
+          servings: parsed.servings || '',
+          createdAt: new Date().toISOString()
+        };
+        sessionStorage.setItem('amr_tmp', JSON.stringify(recipe));
+        statusEl.textContent = 'Done. Opening recipe…';
+        window.location.href = 'recipe.html';
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = '';
+        errorEl.textContent = 'Could not clean this text. Try a different format.';
+      }
+    });
+  })();
+</script>
+
