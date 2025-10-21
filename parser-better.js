@@ -1,4 +1,4 @@
-// index.js — full recipe parser
+// parser-better.js — browser ESM version of your current parser
 
 const COOKING_VERBS = [
   'add','bake','beat','blend','boil','braise','broil','brown','brush','chill','chop','combine',
@@ -108,7 +108,7 @@ function classifyLine(line, mode) {
 
   const head = looksLikeHeading(s);
   if (head) {
-    const newMode = head === 'ignore' ? 'ignore' : head; 
+    const newMode = head === 'ignore' ? 'ignore' : head;
     return { type: 'mode', mode: newMode, text: s };
   }
 
@@ -136,7 +136,7 @@ function classifyLine(line, mode) {
   return { type: 'ignore', mode, text: s };
 }
 
-function parseRecipe(text) {
+export function parseRecipeText(text) {
   const lines = (text || '').split(/\r?\n/);
   const ingredients = [];
   const steps = [];
@@ -154,14 +154,13 @@ function parseRecipe(text) {
   }
 
   const uniq = arr => Array.from(new Set(arr));
-  return { ingredients: uniq(ingredients), steps: uniq(steps) };
+  return {
+    title: '',       // you can keep using your title-guessing in index.html
+    servings: '',    // add later if you want
+    ingredients: uniq(ingredients),
+    steps: uniq(steps)
+  };
 }
 
-if (require.main === module) {
-  const fs = require('fs');
-  const input = fs.readFileSync(0, 'utf8');
-  const out = parseRecipe(input);
-  console.log(JSON.stringify(out, null, 2));
-}
-
-module.exports = { parseRecipe, classifyLine };
+// Optional: export for debugging
+export { classifyLine };
