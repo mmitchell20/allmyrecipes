@@ -33,16 +33,32 @@ async function preprocess(file) {
 }
 
 // normalize OCR quirks so your parser works better
-export function normalizeOcrText(text) {
+export function normalizeOcrText(text){
   return (text || '')
+    // line/space hygiene
     .replace(/\r\n/g, '\n')
-    .replace(/-\n/g, '')                 // join hyphenated line breaks
-    .replace(/[ \t]+\n/g, '\n')          // trim end spaces
-    .replace(/\n{3,}/g, '\n\n')          // squeeze big gaps
-    .replace(/[•▪◦●◆▶]/g, '•')          // unify bullets
-    .replace(/\s+·\s+/g, ' • ')
+    .replace(/\u00AD/g, '')               // soft hyphen
+    .replace(/-\n/g, '')                  // join hyphenated breaks
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    // unify bullets & strip junk after bullets (e.g., "• ®")
+    .replace(/^[ \t]*[•·▪◦●◆▶][ \t]*(?:[®©™])?[ \t]*/gm, '• ')
+    // punctuation & ligatures
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, '-')
+    .replace(/[ﬁ]/g, 'fi').replace(/[ﬂ]/g, 'fl')
+    .replace(/[ﬀ]/g, 'ff').replace(/[ﬃ]/g, 'ffi').replace(/[ﬄ]/g, 'ffl')
+    // remove trademarks & random symbols
+    .replace(/[®©™]/g, '')
+    // common OCR confusions in cooking text
+    .replace(/\b0z\b/gi, 'oz')            // 0z -> oz
+    .replace(/\b1b\b/gi, 'lb')            // 1b -> lb
+    // normalize step numbers (I./l. -> 1.)
+    .replace(/(^|\n)\s*[Il]\s*[.)-]\s+/g, '$1 1. ')
     .trim();
 }
+
 
 /**
  * OCR all files (sequential for stability).
