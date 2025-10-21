@@ -25,16 +25,17 @@
   textarea{min-height:220px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace}
   button{padding:10px 14px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer}
   .error{color:#b00020;font-weight:600}
-  /* screenshot mode UI */
-.toggle { display:flex; gap:8px; margin:8px 0 4px; }
-.toggle button { padding:6px 10px; border:1px solid #ddd; background:#f6f6f6; border-radius:8px; cursor:pointer; }
-.toggle button.active { background:#111; color:#fff; border-color:#111; }
 
-.drop { border:2px dashed #ddd; border-radius:12px; padding:14px; background:#fff; }
-.drop.dragover { border-color:#111; background:#fff; }
-.preview { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-.preview img { height:72px; border-radius:8px; border:1px solid #eee; }
-.hidden { display:none; }
+  /* screenshot mode UI */
+  .toggle { display:flex; gap:8px; margin:8px 0 4px; }
+  .toggle button { padding:6px 10px; border:1px solid #ddd; background:#f6f6f6; border-radius:8px; cursor:pointer; }
+  .toggle button.active { background:#111; color:#fff; border-color:#111; }
+
+  .drop { border:2px dashed #ddd; border-radius:12px; padding:14px; background:#fff; }
+  .drop.dragover { border-color:#111; background:#fff; }
+  .preview { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .preview img { height:72px; border-radius:8px; border:1px solid #eee; }
+  .hidden { display:none; }
 </style>
 </head>
 <body>
@@ -46,157 +47,167 @@
   <h1>allmyrecipes</h1>
   <p class="muted">Paste any messy recipe text and we’ll clean it into Ingredients + Steps.</p>
 
-<form id="cleaner">
-  <div class="toggle" role="tablist" aria-label="input mode">
-    <button type="button" id="btnPaste" class="active" aria-selected="true">Paste text</button>
-    <button type="button" id="btnShots" aria-selected="false">Upload screenshots</button>
-  </div>
-
-  <div>
-    <label for="title">Recipe name:</label>
-    <input id="title" type="text" placeholder="e.g., Spicy Lemon Pasta" />
-  </div>
-  <div>
-    <label for="source">Where'd you find the recipe? (original link)</label>
-    <input id="source" type="url" placeholder="https://example.com/the-recipe" />
-  </div>
-
-  <!-- PASTE MODE -->
-  <div id="pasteMode">
-    <label for="raw">Ok, paste all the text you have and let's clean this up and get cooking!</label>
-    <textarea id="raw" placeholder="Paste the whole recipe text here…" required></textarea>
-  </div>
-
-  <!-- SCREENSHOT MODE -->
-  <div id="shotMode" class="hidden">
-    <label>Upload recipe screenshots</label>
-    <div id="drop" class="drop" aria-label="Drop images here">
-      Drag & drop images here, or
-      <input id="imgFiles" type="file" accept="image/*" multiple style="display:inline-block;margin-left:6px">
-      <div class="muted" style="margin-top:6px">Tip: you can also paste images from clipboard here.</div>
-      <div id="preview" class="preview"></div>
+  <!-- NOTE: novalidate prevents the browser from blocking submit;
+       we do our own validation in JS -->
+  <form id="cleaner" novalidate>
+    <div class="toggle" role="tablist" aria-label="input mode">
+      <button type="button" id="btnPaste" class="active" aria-selected="true">Paste text</button>
+      <button type="button" id="btnShots" aria-selected="false">Upload screenshots</button>
     </div>
-  </div>
 
-  <div style="margin-top:10px">
-    <button type="submit">Clean it up</button>
-    <span id="status" class="muted" style="margin-left:10px"></span>
-  </div>
-  <div id="error" class="error" role="alert"></div>
-</form>
+    <div>
+      <label for="title">Recipe name:</label>
+      <input id="title" type="text" placeholder="e.g., Spicy Lemon Pasta" />
+    </div>
+    <div>
+      <label for="source">Where'd you find the recipe? (original link)</label>
+      <input id="source" type="url" placeholder="https://example.com/the-recipe" />
+    </div>
 
+    <!-- PASTE MODE -->
+    <div id="pasteMode">
+      <label for="raw">Ok, paste all the text you have and let's clean this up and get cooking!</label>
+      <textarea id="raw" placeholder="Paste the whole recipe text here…"></textarea>
+    </div>
+
+    <!-- SCREENSHOT MODE -->
+    <div id="shotMode" class="hidden">
+      <label>Upload recipe screenshots</label>
+      <div id="drop" class="drop" aria-label="Drop images here">
+        Drag & drop images here, or
+        <input id="imgFiles" type="file" accept="image/*" multiple style="display:inline-block;margin-left:6px">
+        <div class="muted" style="margin-top:6px">Tip: you can also paste images from clipboard here.</div>
+        <div id="preview" class="preview"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:10px">
+      <button type="submit">Clean it up</button>
+      <span id="status" class="muted" style="margin-left:10px"></span>
+    </div>
+    <div id="error" class="error" role="alert"></div>
+  </form>
 
   <!-- Import your parser module and wire the page -->
- <script type="module">
-  import { parseRecipeText } from './parser-better.js';
+  <script type="module">
+    import { parseRecipeText } from './parser-better.js';
 
-  const $ = (s)=>document.querySelector(s);
+    const $ = (s)=>document.querySelector(s);
 
-  // elements
-  const form     = $('#cleaner');
-  const btnPaste = $('#btnPaste');
-  const btnShots = $('#btnShots');
-  const pasteBox = $('#pasteMode');
-  const shotBox  = $('#shotMode');
-  const dropZone = $('#drop');
-  const fileInput= $('#imgFiles');
-  const preview  = $('#preview');
+    // elements
+    const form     = $('#cleaner');
+    const btnPaste = $('#btnPaste');
+    const btnShots = $('#btnShots');
+    const pasteBox = $('#pasteMode');
+    const shotBox  = $('#shotMode');
+    const dropZone = $('#drop');
+    const fileInput= $('#imgFiles');
+    const preview  = $('#preview');
 
-  const titleEl  = $('#title');
-  const sourceEl = $('#source');
-  const rawEl    = $('#raw');
-  const statusEl = $('#status');
-  const errorEl  = $('#error');
+    const titleEl  = $('#title');
+    const sourceEl = $('#source');
+    const rawEl    = $('#raw');
+    const statusEl = $('#status');
+    const errorEl  = $('#error');
 
-  // mode toggle
-  let mode = 'paste';
-  function setMode(m){
-    mode = m;
-    btnPaste.classList.toggle('active', m==='paste');
-    btnShots.classList.toggle('active', m==='shots');
-    pasteBox.classList.toggle('hidden', m!=='paste');
-    shotBox.classList.toggle('hidden',  m!=='shots');
-  }
-  btnPaste.addEventListener('click', ()=> setMode('paste'));
-  btnShots.addEventListener('click', ()=> setMode('shots'));
+    // mode toggle + required flags
+    let mode = 'paste';
+    function setMode(m){
+      mode = m;
+      btnPaste.classList.toggle('active', m==='paste');
+      btnShots.classList.toggle('active', m==='shots');
+      pasteBox.classList.toggle('hidden', m!=='paste');
+      shotBox.classList.toggle('hidden',  m!=='shots');
 
-  // small title helper (use your parser title if you add one later)
-  let titleTouched = false;
-  titleEl.addEventListener('input', ()=>{ titleTouched = true; });
-
-  // drop/paste helpers
-  function addFiles(files){
-    const list = Array.from(files || []);
-    for (const f of list) {
-      const url = URL.createObjectURL(f);
-      const img = new Image(); img.src = url;
-      img.onload = ()=> URL.revokeObjectURL(url);
-      preview.appendChild(img);
+      // IMPORTANT: toggle required so the browser won't block submit
+      rawEl.required      = (m === 'paste');
+      if (fileInput) fileInput.required = (m === 'shots');
     }
-  }
-  dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.classList.add('dragover'); });
-  dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('dragover'));
-  dropZone.addEventListener('drop', (e)=>{ e.preventDefault(); dropZone.classList.remove('dragover'); addFiles(e.dataTransfer.files); fileInput.files = e.dataTransfer.files; });
-  fileInput.addEventListener('change', ()=> addFiles(fileInput.files));
-  window.addEventListener('paste', (e)=>{
-    if (mode !== 'shots') return;
-    const items = e.clipboardData?.items || [];
-    const imgs = [];
-    for (const it of items) if (it.kind === 'file') imgs.push(it.getAsFile());
-    if (imgs.length) {
-      const dt = new DataTransfer();
-      imgs.forEach(f => dt.items.add(f));
-      fileInput.files = dt.files;
-      addFiles(dt.files);
-    }
-  });
+    btnPaste.addEventListener('click', ()=> setMode('paste'));
+    btnShots.addEventListener('click', ()=> setMode('shots'));
+    // initialize flags on load
+    setMode('paste');
 
-  form.addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    errorEl.textContent = '';
-    statusEl.textContent = 'Cleaning…';
+    // small title helper (keep if you later add title guessing)
+    let titleTouched = false;
+    titleEl.addEventListener('input', ()=>{ titleTouched = true; });
 
-    try {
-      let rawText = '';
-
-      if (mode === 'shots') {
-        const files = Array.from(fileInput.files || []);
-        if (!files.length) { errorEl.textContent = 'Please add at least one image.'; statusEl.textContent=''; return; }
-
-        // lazy-load OCR only when needed
-        const { ocrAll, normalizeOcrText } = await import('./ocr.js');
-
-        statusEl.textContent = 'Reading images…';
-        const { text } = await ocrAll(files, {
-          onProgress: ({index,total,progress})=>{
-            statusEl.textContent = `OCR ${index}/${total}: ${Math.round((progress||0)*100)}%`;
-          }
-        });
-        rawText = normalizeOcrText(text);
-      } else {
-        rawText = (rawEl.value || '').trim();
+    // drop/paste helpers
+    function addFiles(files){
+      const list = Array.from(files || []);
+      for (const f of list) {
+        const url = URL.createObjectURL(f);
+        const img = new Image(); img.src = url;
+        img.onload = ()=> URL.revokeObjectURL(url);
+        preview.appendChild(img);
       }
-
-      // parse with your existing parser
-      const parsed = parseRecipeText(rawText);
-
-      const recipe = {
-        id: 'tmp_' + Date.now(),
-        title: (titleEl.value.trim() || parsed.title || '').trim(),
-        source: sourceEl.value.trim(),
-        ingredients: parsed.ingredients || [],
-        steps: parsed.steps || [],
-        servings: parsed.servings || '',
-        createdAt: new Date().toISOString()
-      };
-
-      sessionStorage.setItem('amr_tmp', JSON.stringify(recipe));
-      statusEl.textContent = 'Done. Opening recipe…';
-      window.location.href = 'recipe.html';
-    } catch (err) {
-      console.error(err);
-      statusEl.textContent = '';
-      errorEl.textContent = 'Could not process screenshots. Try brighter/straighter photos or fewer images.';
     }
-  });
-</script>
+    dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e)=>{ e.preventDefault(); dropZone.classList.remove('dragover'); addFiles(e.dataTransfer.files); fileInput.files = e.dataTransfer.files; });
+    fileInput.addEventListener('change', ()=> addFiles(fileInput.files));
+    window.addEventListener('paste', (e)=>{
+      if (mode !== 'shots') return;
+      const items = e.clipboardData?.items || [];
+      const imgs = [];
+      for (const it of items) if (it.kind === 'file') imgs.push(it.getAsFile());
+      if (imgs.length) {
+        const dt = new DataTransfer();
+        imgs.forEach(f => dt.items.add(f));
+        fileInput.files = dt.files;
+        addFiles(dt.files);
+      }
+    });
+
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      errorEl.textContent = '';
+      statusEl.textContent = 'Cleaning…';
+
+      try {
+        let rawText = '';
+
+        if (mode === 'shots') {
+          const files = Array.from(fileInput.files || []);
+          if (!files.length) { errorEl.textContent = 'Please add at least one image.'; statusEl.textContent=''; return; }
+
+          // lazy-load OCR only when needed
+          const { ocrAll, normalizeOcrText } = await import('./ocr.js');
+
+          statusEl.textContent = 'Reading images…';
+          const { text } = await ocrAll(files, {
+            onProgress: ({index,total,progress})=>{
+              statusEl.textContent = `OCR ${index}/${total}: ${Math.round((progress||0)*100)}%`;
+            }
+          });
+          rawText = normalizeOcrText(text);
+        } else {
+          rawText = (rawEl.value || '').trim();
+          if (!rawText) { errorEl.textContent = 'Please paste some recipe text.'; statusEl.textContent=''; return; }
+        }
+
+        // parse with your existing parser
+        const parsed = parseRecipeText(rawText);
+
+        const recipe = {
+          id: 'tmp_' + Date.now(),
+          title: (titleEl.value.trim() || parsed.title || '').trim(),
+          source: sourceEl.value.trim(),
+          ingredients: parsed.ingredients || [],
+          steps: parsed.steps || [],
+          servings: parsed.servings || '',
+          createdAt: new Date().toISOString()
+        };
+
+        sessionStorage.setItem('amr_tmp', JSON.stringify(recipe));
+        statusEl.textContent = 'Done. Opening recipe…';
+        window.location.href = 'recipe.html';
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = '';
+        errorEl.textContent = 'Could not process screenshots. Try brighter/straighter photos or fewer images.';
+      }
+    });
+  </script>
+</body>
+</html>
