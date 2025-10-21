@@ -25,6 +25,16 @@
   textarea{min-height:220px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace}
   button{padding:10px 14px;border:0;border-radius:12px;background:#111;color:#fff;cursor:pointer}
   .error{color:#b00020;font-weight:600}
+  /* screenshot mode UI */
+.toggle { display:flex; gap:8px; margin:8px 0 4px; }
+.toggle button { padding:6px 10px; border:1px solid #ddd; background:#f6f6f6; border-radius:8px; cursor:pointer; }
+.toggle button.active { background:#111; color:#fff; border-color:#111; }
+
+.drop { border:2px dashed #ddd; border-radius:12px; padding:14px; background:#fff; }
+.drop.dragover { border-color:#111; background:#fff; }
+.preview { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.preview img { height:72px; border-radius:8px; border:1px solid #eee; }
+.hidden { display:none; }
 </style>
 </head>
 <body>
